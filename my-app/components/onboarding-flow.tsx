@@ -12,7 +12,6 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getPhoneValidationError, formatPhoneNumber } from "@/lib/phone-utils";
 import { PhoneInput } from "@/components/phone-input";
-import { HyperspellConnectButton } from "@/components/HyperspellConnectButton";
 import { ConnectIntegrationButton } from "@/components/ConnectIntegrationButton";
 import { getIntegrations, getUserIntegrations, type Integration, type UserIntegration } from "@/lib/integrations";
 
@@ -533,18 +532,6 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   </p>
                 </div>
 
-                <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50/50 border border-blue-100">
-                  <Shield className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-blue-900">
-                      Secure & Private
-                    </p>
-                    <p className="text-xs text-blue-700 leading-relaxed">
-                      Your data is encrypted. You can disconnect anytime.
-                    </p>
-                  </div>
-                </div>
-
                 <form onSubmit={handleStep3Submit} className="space-y-4">
                   {error && (
                     <div className="p-3 text-sm text-red-600 bg-red-50 rounded-xl">
@@ -557,25 +544,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
                     </div>
                   ) : (
-                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
-                      {/* Hyperspell First - Special Card */}
-                      <div className="p-4 rounded-xl border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="h-8 w-8 rounded-lg bg-purple-500 flex items-center justify-center">
-                            <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                            </svg>
-                          </div>
-                          <div className="flex-1">
-                            <h3 className="font-semibold text-base">Hyperspell Data</h3>
-                            <p className="text-xs text-purple-700">AI-powered memory & search</p>
-                          </div>
-                        </div>
-                        <HyperspellConnectButton />
-                      </div>
-
-                      {/* Scrolling Composio Integrations */}
-                      <div className="space-y-3">
+                    <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
                         {availableIntegrations.map((integration) => {
                           const isConnected = isIntegrationConnected(integration.slug);
                           return (
@@ -621,7 +590,6 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                             </div>
                           );
                         })}
-                      </div>
                     </div>
                   )}
 
