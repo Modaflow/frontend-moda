@@ -99,12 +99,12 @@ export default function ChatPage() {
       console.log(`📡 Polling for new messages (${pollCount}/${maxPolls})`)
       
       const hasNewMessages = await loadHistory(true)
-      
+
       // Stop if we got new messages or hit max polls
-      if (hasNewMessages || pollCount >= maxPolls) {
+      if (pollCount >= maxPolls) {
         stopPolling()
       }
-    }, 2000) // Poll every 2 seconds
+    }, 3000) // Poll every 3 seconds
   }
 
   function stopPolling() {
