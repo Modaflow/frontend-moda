@@ -51,6 +51,16 @@ export function Navbar() {
             </span>
           </Link>
 
+          <Link href="/plays">
+            <span
+              className={`text-base font-medium transition-colors font-serif ${
+                pathname === "/plays" ? "text-black" : "text-black/60 hover:text-black"
+              }`}
+            >
+              Plays
+            </span>
+          </Link>
+
           <div
             className="relative"
             onMouseEnter={() => setShowDropdown(true)}

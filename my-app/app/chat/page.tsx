@@ -19,21 +19,12 @@ export default function ChatPage() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [loadingHistory, setLoadingHistory] = useState(true)
-  const [polling, setPolling] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
   useEffect(() => {
     loadHistory()
-    
-    // Cleanup polling on unmount
-    return () => {
-      if (pollingIntervalRef.current) {
-        clearInterval(pollingIntervalRef.current)
-      }
-    }
   }, [])
 
   useEffect(() => {
@@ -44,8 +35,8 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  async function loadHistory(silent: boolean = false) {
-    if (!silent) setLoadingHistory(true)
+  async function loadHistory() {
+    setLoadingHistory(true)
     
     try {
       const {
@@ -64,56 +55,13 @@ export default function ChatPage() {
 
       const data = await response.json()
       if (data.messages) {
-        const newMessageCount = data.messages.length
-        const oldMessageCount = messages.length
-        
-        if (silent && newMessageCount > oldMessageCount) {
-          console.log(`📨 Received ${newMessageCount - oldMessageCount} new messages from execution agents`)
-          // Force state update
-          setMessages([...data.messages])
-          // Force scroll after state update
-          setTimeout(() => scrollToBottom(), 100)
-          return true // New messages received
-        }
-        
         setMessages(data.messages)
       }
-      return false // No new messages
     } catch (error) {
       console.error("Failed to load history:", error)
-      return false
     } finally {
-      if (!silent) setLoadingHistory(false)
+      setLoadingHistory(false)
     }
-  }
-
-  function startPolling() {
-    console.log("🔄 Starting to poll for execution agent results...")
-    setPolling(true)
-    
-    let pollCount = 0
-    const maxPolls = 60 // 2 minutes max
-    
-    pollingIntervalRef.current = setInterval(async () => {
-      pollCount++
-      console.log(`📡 Polling for new messages (${pollCount}/${maxPolls})`)
-      
-      const hasNewMessages = await loadHistory(true)
-
-      // Stop if we got new messages or hit max polls
-      if (pollCount >= maxPolls) {
-        stopPolling()
-      }
-    }, 3000) // Poll every 3 seconds
-  }
-
-  function stopPolling() {
-    console.log("🛑 Stopping poll")
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current)
-      pollingIntervalRef.current = null
-    }
-    setPolling(false)
   }
 
   async function sendMessage(e: React.FormEvent) {
@@ -155,15 +103,7 @@ export default function ChatPage() {
       console.log("📥 Backend response:", data)
       
       if (data.success) {
-        // Check if we have a response (might be empty for wait states)
-        if (!data.response || data.response.trim() === "") {
-          console.warn("⚠️ Empty response from agent")
-          // Remove the optimistic user message since no response
-          setMessages((prev) => prev.slice(0, -1))
-          return
-        }
-        
-        // Add assistant response
+        // Add assistant response (execution agent results are already included!)
         const assistantMessage: Message = {
           role: "assistant",
           message: data.response,
@@ -171,15 +111,9 @@ export default function ChatPage() {
         }
         setMessages((prev) => [...prev, assistantMessage])
 
-        // If execution agents were used, start polling for their results
+        // Log if execution agents were used
         if (data.execution_agents_used > 0) {
-          console.log(`🤖 ${data.execution_agents_used} execution agents were used - starting poll for results`)
-          startPolling()
-          
-          // Stop polling after 2 minutes
-          setTimeout(() => {
-            stopPolling()
-          }, 120000)
+          console.log(`✅ Response included results from ${data.execution_agents_used} execution agent(s)`)
         }
       } else {
         // Backend returned error
@@ -288,11 +222,11 @@ export default function ChatPage() {
                 </div>
               ))
             )}
-            {(loading || polling) && (
+            {loading && (
               <div className="flex justify-start">
                 <div className="bg-gray-100 rounded-2xl px-4 py-3 flex items-center gap-2">
                   <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
-                  {polling && <span className="text-sm text-gray-600">Waiting for agents...</span>}
+                  <span className="text-sm text-gray-600">Thinking...</span>
                 </div>
               </div>
             )}
