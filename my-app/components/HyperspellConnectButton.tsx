@@ -25,8 +25,10 @@ export function HyperspellConnectButton() {
         return
       }
 
+      const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+      
       // Get Hyperspell Connect URL
-      const response = await fetch("http://localhost:8000/api/hyperspell/connect-url", {
+      const response = await fetch(`${API_URL}/api/hyperspell/connect-url`, {
         headers: {
           Authorization: `Bearer ${session.access_token}`,
         },
@@ -62,8 +64,10 @@ export function HyperspellConnectButton() {
         
         pollAttempts++
         
+        const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
+        
         try {
-          const connectionsRes = await fetch("http://localhost:8000/api/hyperspell/connections", {
+          const connectionsRes = await fetch(`${API_URL}/api/hyperspell/connections`, {
             headers: {
               Authorization: `Bearer ${session.access_token}`,
             },

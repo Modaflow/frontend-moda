@@ -22,8 +22,9 @@ export default function SMSPage() {
   }, [])
 
   async function loadStatus() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
     try {
-      const response = await fetch("http://localhost:8000/sms/status")
+      const response = await fetch(`${API_URL}/sms/status`)
       const data = await response.json()
       setStatus(data)
     } catch (error) {
@@ -32,6 +33,7 @@ export default function SMSPage() {
   }
 
   async function handleRegister() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
     setLoading(true)
     try {
       const {
@@ -43,7 +45,7 @@ export default function SMSPage() {
         return
       }
 
-      const response = await fetch("http://localhost:8000/sms/register", {
+      const response = await fetch(`${API_URL}/sms/register`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
@@ -70,6 +72,7 @@ export default function SMSPage() {
   }
 
   async function handleSendTest() {
+    const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
     setLoading(true)
     try {
       const {
@@ -81,7 +84,7 @@ export default function SMSPage() {
         return
       }
 
-      const response = await fetch("http://localhost:8000/sms/send", {
+      const response = await fetch(`${API_URL}/sms/send`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${session.access_token}`,
