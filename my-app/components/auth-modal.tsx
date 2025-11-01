@@ -88,12 +88,13 @@ export function AuthModal({
 
         if (data.user) {
           console.log("User created, now signing them in...");
-          
+
           // Sign the user in immediately after signup
-          const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-          });
+          const { data: signInData, error: signInError } =
+            await supabase.auth.signInWithPassword({
+              email,
+              password,
+            });
 
           if (signInError) {
             console.error("Auto sign-in error:", signInError);

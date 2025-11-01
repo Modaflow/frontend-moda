@@ -11,6 +11,7 @@ import { ArrowRight, Check, ArrowLeft, Loader2, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getPhoneValidationError, formatPhoneNumber } from "@/lib/phone-utils";
+import { PhoneInput } from "@/components/phone-input";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -432,17 +433,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
                   <div className="space-y-2">
                     <Label htmlFor="phone" className="text-sm font-medium">
-                      Phone Number
+                      Phone
                     </Label>
-                    <Input
-                      id="phone"
-                      type="tel"
-                      placeholder="+1 (555) 000-0000"
+                    <PhoneInput
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      required
+                      onChange={setPhone}
                       disabled={loading}
-                      className="h-12 rounded-xl"
                     />
                   </div>
 

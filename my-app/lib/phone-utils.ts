@@ -12,14 +12,22 @@ export function formatPhoneNumber(phone: string): string {
   
   // Check if it's a US/Canada number (+1)
   if (cleaned.startsWith('+1') && cleaned.length === 12) {
-    const areaCode = cleaned.slice(2, 5);
-    const prefix = cleaned.slice(5, 8);
-    const lineNumber = cleaned.slice(8, 12);
-    return `+1 (${areaCode}) ${prefix}-${lineNumber}`;
+    const firstThree = cleaned.slice(2, 5);
+    const nextThree = cleaned.slice(5, 8);
+    const lastFour = cleaned.slice(8, 12);
+    return `+1 (${firstThree}) ${nextThree}-${lastFour}`;
   }
   
-  // For other countries, just return with spaces
+  // For other countries, format as (XXX) XXX-XXXX
   if (cleaned.startsWith('+')) {
+    const countryCode = cleaned.slice(0, cleaned.length - 10);
+    const remaining = cleaned.slice(-10);
+    if (remaining.length === 10) {
+      const firstThree = remaining.slice(0, 3);
+      const nextThree = remaining.slice(3, 6);
+      const lastFour = remaining.slice(6, 10);
+      return `${countryCode} (${firstThree}) ${nextThree}-${lastFour}`;
+    }
     return cleaned.slice(0, 3) + ' ' + cleaned.slice(3);
   }
   

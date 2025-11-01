@@ -1,58 +1,60 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { AuthModal } from "@/components/auth-modal"
-import { OnboardingFlow } from "@/components/onboarding-flow"
+import { useState } from "react";
+import { Button } from "@/components/ui/button";
+import { AuthModal } from "@/components/auth-modal";
+import { OnboardingFlow } from "@/components/onboarding-flow";
 
 export default function Home() {
-  const [authModalOpen, setAuthModalOpen] = useState(false)
-  const [authMode, setAuthMode] = useState<"signin" | "signup">("signup")
-  const [showOnboarding, setShowOnboarding] = useState(false)
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"signin" | "signup">("signup");
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const handleSignIn = () => {
-    setAuthMode("signin")
-    setAuthModalOpen(true)
-  }
+    setAuthMode("signin");
+    setAuthModalOpen(true);
+  };
 
   const handleCreateAccount = () => {
-    setAuthMode("signup")
-    setAuthModalOpen(true)
-  }
+    setAuthMode("signup");
+    setAuthModalOpen(true);
+  };
 
   const handleAuthSuccess = (needsOnboarding: boolean) => {
-    setAuthModalOpen(false)
+    setAuthModalOpen(false);
     if (needsOnboarding) {
-      setShowOnboarding(true)
+      setShowOnboarding(true);
     } else {
       // User already completed onboarding, redirect to integrations
-      window.location.href = '/integrations'
+      window.location.href = "/integrations";
     }
-  }
+  };
 
   const handleOnboardingComplete = () => {
-    setShowOnboarding(false)
-  }
+    setShowOnboarding(false);
+  };
 
   const handleModeSwitch = (newMode: "signin" | "signup") => {
-    setAuthMode(newMode)
-  }
+    setAuthMode(newMode);
+  };
 
   return (
     <main className="relative min-h-screen w-full overflow-hidden">
       {/* Video Background - Always visible */}
-      <div className="absolute inset-0 z-0">
-        <iframe
-          src="https://www.youtube.com/embed/AAAtyYMQHcs?autoplay=1&mute=1&loop=1&playlist=AAAtyYMQHcs&controls=0&showinfo=0&rel=0&modestbranding=1"
+      <div className="absolute inset-0 z-0 bg-black">
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
           className="absolute inset-0 w-full h-full object-cover pointer-events-none"
           style={{
             width: "100vw",
             height: "100vh",
-            transform: "scale(1.5)",
           }}
-          allow="autoplay; encrypted-media"
-          title="Background video"
-        />
+        >
+          <source src="/background.webm" type="video/webm" />
+        </video>
         <div className="absolute inset-0 bg-black/30" />
       </div>
 
@@ -60,7 +62,9 @@ export default function Home() {
         <div className="relative z-10 flex min-h-screen flex-col items-center justify-center px-4">
           <div className="flex flex-col items-center gap-8">
             {/* Logo */}
-            <h1 className="font-serif text-7xl md:text-8xl lg:text-9xl text-white tracking-wider">Moda</h1>
+            <h1 className="font-serif text-7xl md:text-8xl lg:text-9xl text-white tracking-wider">
+              Moda
+            </h1>
 
             {/* Buttons */}
             <div className="flex flex-col gap-4 w-full max-w-sm">
@@ -85,7 +89,9 @@ export default function Home() {
         </div>
       )}
 
-      {showOnboarding && <OnboardingFlow onComplete={handleOnboardingComplete} />}
+      {showOnboarding && (
+        <OnboardingFlow onComplete={handleOnboardingComplete} />
+      )}
 
       {/* Auth Modal */}
       <AuthModal
@@ -96,5 +102,5 @@ export default function Home() {
         onSuccess={handleAuthSuccess}
       />
     </main>
-  )
+  );
 }

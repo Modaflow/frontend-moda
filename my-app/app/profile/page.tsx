@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { User, Mail, Phone, Edit2, Check, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
+import { PhoneInput } from "@/components/phone-input"
 
 export default function ProfilePage() {
   const [name, setName] = useState("")
@@ -123,21 +124,19 @@ export default function ProfilePage() {
             <div className="space-y-3">
               <Label className="text-sm font-medium flex items-center gap-2 text-black/70">
                 <Phone className="h-4 w-4 text-black/40" />
-                Phone Number
+                Phone
               </Label>
               <div className="relative">
-                <Input
+                <PhoneInput
                   value={isEditing ? tempPhone : phone}
-                  onChange={(e) => setTempPhone(e.target.value)}
+                  onChange={setTempPhone}
                   disabled={!isEditing}
-                  className={`h-12 pr-24 rounded-xl transition-all ${
-                    isEditing ? "bg-white border-black/10 text-black" : "bg-black/[0.02] border-black/5 text-black/50"
-                  }`}
+                  className={isEditing ? "" : "opacity-60"}
                 />
                 <button
                   onClick={isEditing ? handleSave : handleEdit}
                   disabled={saving}
-                  className={`absolute right-1.5 top-1.5 h-9 px-4 rounded-lg text-sm font-medium transition-all flex items-center gap-2 ${
+                  className={`absolute right-1.5 top-1.5 h-9 px-4 rounded-lg text-sm font-medium transition-all flex items-center gap-2 z-10 ${
                     isEditing
                       ? "bg-green-500 hover:bg-green-600 text-white disabled:opacity-50"
                       : "bg-black/5 hover:bg-black/10 text-black/60"
