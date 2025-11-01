@@ -31,6 +31,26 @@ export function Navbar() {
             </span>
           </Link>
 
+          <Link href="/sms">
+            <span
+              className={`text-base font-medium transition-colors font-serif ${
+                pathname === "/sms" ? "text-black" : "text-black/60 hover:text-black"
+              }`}
+            >
+              SMS
+            </span>
+          </Link>
+
+          <Link href="/chat">
+            <span
+              className={`text-base font-medium transition-colors font-serif ${
+                pathname === "/chat" ? "text-black" : "text-black/60 hover:text-black"
+              }`}
+            >
+              Chat
+            </span>
+          </Link>
+
           <div
             className="relative"
             onMouseEnter={() => setShowDropdown(true)}
