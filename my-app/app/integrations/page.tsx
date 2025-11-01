@@ -1,0 +1,328 @@
+"use client"
+
+import type React from "react"
+import { useState } from "react"
+import { Navbar } from "@/components/navbar"
+import { X, Plus, Check, Sparkles } from "lucide-react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+
+interface Integration {
+  id: string
+  name: string
+  icon: React.ReactNode
+  enabled: boolean
+  description: string
+  comingSoon?: boolean
+}
+
+export default function IntegrationsPage() {
+  const [integrations, setIntegrations] = useState<Integration[]>([
+    {
+      id: "1",
+      name: "Slack",
+      description: "Team communication platform",
+      icon: (
+        <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"
+            fill="#E01E5A"
+          />
+        </svg>
+      ),
+      enabled: true,
+    },
+    {
+      id: "2",
+      name: "Notion",
+      description: "Workspace for notes and docs",
+      icon: (
+        <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z"
+            fill="currentColor"
+          />
+        </svg>
+      ),
+      enabled: true,
+    },
+    {
+      id: "3",
+      name: "Gmail",
+      description: "Email and communication",
+      icon: (
+        <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L12 9.366l8.073-5.873C21.69 2.28 24 3.434 24 5.457z"
+            fill="#EA4335"
+          />
+        </svg>
+      ),
+      enabled: false,
+    },
+    {
+      id: "4",
+      name: "Google Drive",
+      description: "Cloud storage and file sharing",
+      icon: (
+        <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
+          <path d="M7.71 3.5L1.15 15l3.42 6.5L11.13 10 7.71 3.5z" fill="#0066DA" />
+          <path d="M7.71 3.5L11.13 10l7.59-6.5H7.71z" fill="#00AC47" />
+          <path d="M16.43 22l6.56-11-3.42-6.5-9.99 17.5h6.85z" fill="#EA4335" />
+          <path d="M11.58 22l-3.42-6.5L1.15 15l3.42 6.5h7.01z" fill="#00832D" />
+          <path d="M18.72 4.5l3.42 6.5L16.43 22l-4.85-12 7.14-5.5z" fill="#2684FC" />
+          <path d="M11.58 22h4.85l-4.85-12-3.42 6.5 3.42 5.5z" fill="#FFBA00" />
+        </svg>
+      ),
+      enabled: false,
+    },
+    {
+      id: "5",
+      name: "Dropbox",
+      description: "File hosting and collaboration",
+      icon: (
+        <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M6 1.807L0 5.629l6 3.822 6.001-3.822L6 1.807zM18 1.807l-6 3.822 6 3.822 6-3.822-6-3.822zM0 13.274l6 3.822 6.001-3.822L6 9.451l-6 3.823zM18 9.451l-6 3.823 6 3.822 6-3.822-6-3.823zM6 18.371l6.001 3.822 6-3.822-6-3.822L6 18.371z"
+            fill="#0061FF"
+          />
+        </svg>
+      ),
+      enabled: false,
+      comingSoon: true,
+    },
+    {
+      id: "6",
+      name: "Zoom",
+      description: "Video conferencing platform",
+      icon: (
+        <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
+          <path
+            d="M4.5 0A4.5 4.5 0 000 4.5v15A4.5 4.5 0 004.5 24h15a4.5 4.5 0 004.5-4.5v-15A4.5 4.5 0 0019.5 0h-15z"
+            fill="#2D8CFF"
+          />
+          <path d="M6.75 8.25h6.75v4.5l3.75-3v6l-3.75-3v4.5H6.75v-9z" fill="white" />
+        </svg>
+      ),
+      enabled: false,
+      comingSoon: true,
+    },
+  ])
+
+  const [showModal, setShowModal] = useState(false)
+  const [selectedIntegration, setSelectedIntegration] = useState<Integration | null>(null)
+  const [isConnecting, setIsConnecting] = useState(false)
+  const [isConnected, setIsConnected] = useState(false)
+
+  const handleToggle = (id: string) => {
+    setIntegrations(
+      integrations.map((integration) =>
+        integration.id === id ? { ...integration, enabled: !integration.enabled } : integration,
+      ),
+    )
+  }
+
+  const handleAddIntegration = (integration: Integration) => {
+    if (integration.comingSoon) return
+    setSelectedIntegration(integration)
+    setShowModal(true)
+    setIsConnected(false)
+  }
+
+  const handleSignIn = async () => {
+    setIsConnecting(true)
+    await new Promise((resolve) => setTimeout(resolve, 1500))
+    setIsConnecting(false)
+    setIsConnected(true)
+
+    setTimeout(() => {
+      if (selectedIntegration) {
+        handleToggle(selectedIntegration.id)
+      }
+      setShowModal(false)
+      setIsConnecting(false)
+      setIsConnected(false)
+      setSelectedIntegration(null)
+    }, 1000)
+  }
+
+  const enabledIntegrations = integrations.filter((i) => i.enabled)
+  const availableIntegrations = integrations.filter((i) => !i.enabled)
+
+  const isEmpty = enabledIntegrations.length === 0
+  const isComplete = availableIntegrations.filter((i) => !i.comingSoon).length === 0
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-blue-50/30 via-white to-blue-50/50">
+      <Navbar />
+
+      <main className="container mx-auto px-6 py-12 max-w-6xl">
+        {isEmpty && (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+              <Sparkles className="h-10 w-10 text-blue-600" />
+            </div>
+            <h2 className="text-3xl font-serif font-semibold text-black text-balance text-center">Nothing here yet</h2>
+            <p className="text-black/60 text-center text-pretty max-w-md leading-relaxed">
+              Connect your first integration below to unlock the full potential of Moda
+            </p>
+          </div>
+        )}
+
+        {isComplete && (
+          <div className="flex flex-col items-center justify-center py-20 space-y-4">
+            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-green-100 to-emerald-200 flex items-center justify-center">
+              <Check className="h-10 w-10 text-green-600" />
+            </div>
+            <h2 className="text-3xl font-serif font-semibold text-black text-balance text-center">You're all set</h2>
+            <p className="text-black/60 text-center text-pretty max-w-md leading-relaxed">
+              All integrations connected. You're fully equipped to make the most of Moda
+            </p>
+          </div>
+        )}
+
+        <div className="space-y-10">
+          {!isEmpty && (
+            <div className="space-y-6">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-serif font-medium text-black">Connected</h2>
+                <p className="text-black/50 text-sm leading-relaxed">Your active integrations</p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {enabledIntegrations.map((integration) => (
+                  <div
+                    key={integration.id}
+                    className="group relative border-2 border-green-500/20 rounded-2xl bg-white backdrop-blur-sm hover:bg-white hover:border-green-500/30 hover:shadow-xl hover:shadow-green-500/10 transition-all duration-300 p-8"
+                  >
+                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+                      <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+                      <span className="text-xs font-medium text-green-700">Connected</span>
+                    </div>
+
+                    <button
+                      onClick={() => handleToggle(integration.id)}
+                      className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200 p-1.5 rounded-lg hover:bg-black/5"
+                      aria-label="Remove integration"
+                    >
+                      <X className="h-4 w-4 text-black/40 hover:text-black/70" />
+                    </button>
+
+                    <div className="flex flex-col items-center gap-4 text-center pt-4">
+                      <div className="flex-shrink-0">{integration.icon}</div>
+                      <div className="space-y-1">
+                        <h3 className="text-base font-medium text-black">{integration.name}</h3>
+                        <p className="text-xs text-black/40">{integration.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!isComplete && (
+            <div className="space-y-6">
+              <div className="space-y-1">
+                <h2 className="text-2xl font-serif font-medium text-black">Available</h2>
+                <p className="text-black/50 text-sm leading-relaxed">Expand your toolkit</p>
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {availableIntegrations.map((integration) => (
+                  <div
+                    key={integration.id}
+                    className={`group relative border border-black/5 rounded-2xl bg-white/40 backdrop-blur-sm transition-all duration-300 p-8 ${
+                      integration.comingSoon
+                        ? "cursor-not-allowed opacity-60"
+                        : "hover:bg-white/80 hover:border-black/10 hover:shadow-lg hover:shadow-black/5 cursor-pointer"
+                    }`}
+                    onClick={() => handleAddIntegration(integration)}
+                  >
+                    {integration.comingSoon && (
+                      <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 backdrop-blur-sm">
+                        <span className="text-xs font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                          Coming Soon
+                        </span>
+                      </div>
+                    )}
+
+                    {!integration.comingSoon && (
+                      <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-all duration-200 p-1.5 rounded-lg bg-black/5">
+                        <Plus className="h-4 w-4 text-black/60" />
+                      </div>
+                    )}
+
+                    <div
+                      className={`flex flex-col items-center gap-4 text-center ${integration.comingSoon ? "pt-4" : ""}`}
+                    >
+                      <div
+                        className={`flex-shrink-0 transition-opacity duration-300 ${
+                          integration.comingSoon ? "opacity-40" : "opacity-30 group-hover:opacity-100"
+                        }`}
+                      >
+                        {integration.icon}
+                      </div>
+                      <div className="space-y-1">
+                        <h3
+                          className={`text-base font-medium transition-colors ${
+                            integration.comingSoon ? "text-black/40" : "text-black/50 group-hover:text-black"
+                          }`}
+                        >
+                          {integration.name}
+                        </h3>
+                        <p
+                          className={`text-xs transition-colors ${
+                            integration.comingSoon ? "text-black/30" : "text-black/30 group-hover:text-black/40"
+                          }`}
+                        >
+                          {integration.description}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      <Dialog open={showModal} onOpenChange={setShowModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-semibold text-center">
+              Connect {selectedIntegration?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-6 py-4">
+            <div className="flex flex-col items-center gap-4">
+              <div className="flex-shrink-0">{selectedIntegration?.icon}</div>
+              <p className="text-center text-black/60">{selectedIntegration?.description}</p>
+            </div>
+
+            <Button
+              onClick={handleSignIn}
+              disabled={isConnecting || isConnected}
+              className="w-full h-12 bg-black hover:bg-black/90 text-white font-medium"
+            >
+              {isConnecting ? (
+                <div className="flex items-center gap-2">
+                  <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Connecting...
+                </div>
+              ) : isConnected ? (
+                <div className="flex items-center gap-2">
+                  <Check className="h-5 w-5 text-green-500" />
+                  Connected
+                </div>
+              ) : (
+                "Sign In"
+              )}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
