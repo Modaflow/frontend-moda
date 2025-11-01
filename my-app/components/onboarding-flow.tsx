@@ -10,6 +10,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowRight, Check, ArrowLeft, Loader2, Shield } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { getPhoneValidationError, formatPhoneNumber } from "@/lib/phone-utils";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -90,6 +91,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     try {
       console.log("Updating profile with:", { name, phone, userId });
 
+      // Validate phone number format
+      const phoneError = getPhoneValidationError(phone);
+      if (phoneError) {
+        throw new Error(phoneError);
+      }
+
       // Update user profile with name and phone
       const { data, error: updateError } = await supabase
         .from("user_profiles")
@@ -111,6 +118,29 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
       console.log("Profile updated successfully:", data[0]);
 
+      // Send verification code via backend
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No active session");
+      }
+
+      const response = await fetch('/api/phone/send-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ phone_number: phone }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to send verification code');
+      }
+
+      console.log("Verification code sent:", result);
+
       setIsTransitioning(true);
       await new Promise((resolve) => setTimeout(resolve, 300));
       setStep(2);
@@ -131,28 +161,46 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setError("");
 
     try {
-      console.log("Marking phone as verified for user:", userId);
+      console.log("Verifying phone code for user:", userId);
 
-      // For now, we'll skip actual phone verification and just mark as verified
-      // In production, you'd verify the code with a service like Twilio
-      const { data, error: updateError } = await supabase
-        .from("user_profiles")
-        .update({
-          phone_verified: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", userId)
-        .select();
-
-      console.log("Phone verification result:", { data, error: updateError });
-
-      if (updateError) throw updateError;
-
-      if (!data || data.length === 0) {
-        throw new Error("No profile found to update");
+      // Validate code format
+      if (verificationCode.length !== 6) {
+        throw new Error("Please enter a 6-digit verification code");
       }
 
-      console.log("Phone verified successfully:", data[0]);
+      // Verify code via backend
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No active session");
+      }
+
+      const response = await fetch('/api/phone/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ code: verificationCode }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Invalid or expired verification code');
+      }
+
+      console.log("Phone verified successfully:", result);
+
+      // Update local profile state
+      const { data, error: updateError } = await supabase
+        .from("user_profiles")
+        .select("*")
+        .eq("user_id", userId)
+        .single();
+
+      if (updateError) {
+        console.error("Error fetching updated profile:", updateError);
+      }
 
       setIsTransitioning(true);
       await new Promise((resolve) => setTimeout(resolve, 300));
@@ -217,9 +265,39 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const handleResend = async () => {
     setResendState("loading");
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setResendState("success");
-    setTimeout(() => setResendState("idle"), 2000);
+    setError("");
+
+    try {
+      // Get session token
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("No active session");
+      }
+
+      // Resend verification code
+      const response = await fetch('/api/phone/send-code', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ phone_number: phone }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to resend verification code');
+      }
+
+      console.log("Verification code resent:", result);
+      setResendState("success");
+      setTimeout(() => setResendState("idle"), 2000);
+    } catch (err: any) {
+      console.error("Resend error:", err);
+      setError(err.message || "Failed to resend code");
+      setResendState("idle");
+    }
   };
 
   const handleConnectIntegration = (integration: string) => {
@@ -389,7 +467,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   </h2>
                   <p className="text-muted-foreground text-pretty">
                     We've sent a verification code to{" "}
-                    <span className="font-medium text-foreground">{phone}</span>
+                    <span className="font-medium text-foreground">{formatPhoneNumber(phone)}</span>
                   </p>
                 </div>
 
