@@ -13,7 +13,12 @@ import { supabase } from "@/lib/supabase";
 import { getPhoneValidationError, formatPhoneNumber } from "@/lib/phone-utils";
 import { PhoneInput } from "@/components/phone-input";
 import { ConnectIntegrationButton } from "@/components/ConnectIntegrationButton";
-import { getIntegrations, getUserIntegrations, type Integration, type UserIntegration } from "@/lib/integrations";
+import {
+  getIntegrations,
+  getUserIntegrations,
+  type Integration,
+  type UserIntegration,
+} from "@/lib/integrations";
 import { getIntegrationIcon } from "@/lib/integration-icons";
 
 interface OnboardingFlowProps {
@@ -35,8 +40,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
-  const [availableIntegrations, setAvailableIntegrations] = useState<Integration[]>([]);
-  const [userIntegrations, setUserIntegrations] = useState<UserIntegration[]>([]);
+  const [availableIntegrations, setAvailableIntegrations] = useState<
+    Integration[]
+  >([]);
+  const [userIntegrations, setUserIntegrations] = useState<UserIntegration[]>(
+    []
+  );
   const [loadingIntegrations, setLoadingIntegrations] = useState(false);
   const router = useRouter();
 
@@ -54,9 +63,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
           .from("user_profiles")
           .select("id")
           .eq("user_id", user.id)
-          .single();
+          .maybeSingle();
 
-        if (profileError && profileError.code === "PGRST116") {
+        if (!profile && !profileError) {
           // Profile doesn't exist, create it using upsert to avoid duplicates
           console.log("Creating user profile...");
           const { error: createError } = await supabase
@@ -96,7 +105,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setError("");
 
     try {
-      console.log("Updating profile with:", { name, phone, userId });
+      console.log("Validating phone and sending verification code:", {
+        name,
+        phone,
+        userId,
+      });
 
       // Validate phone number format
       const phoneError = getPhoneValidationError(phone);
@@ -110,50 +123,56 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         .select("user_id")
         .eq("phone_number", phone)
         .neq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       if (existingPhone) {
-        throw new Error("This phone number is already registered to another account");
+        throw new Error(
+          "This phone number is already registered to another account"
+        );
       }
 
-      // Update user profile with name and phone
-      const { data, error: updateError } = await supabase
+      // Use upsert to ensure profile exists and is updated
+      const { data, error: upsertError } = await supabase
         .from("user_profiles")
-        .update({
-          full_name: name,
-          phone_number: phone,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("user_id", userId)
+        .upsert(
+          {
+            user_id: userId,
+            full_name: name,
+            phone_number: phone,
+            onboarding_completed: false,
+            updated_at: new Date().toISOString(),
+          },
+          {
+            onConflict: "user_id",
+          }
+        )
         .select();
 
-      console.log("Update result:", { data, error: updateError });
+      console.log("Update result:", { data, error: upsertError });
 
-      if (updateError) {
+      if (upsertError) {
         // Check if it's a unique constraint error
-        if (updateError.code === "23505") {
+        if (upsertError.code === "23505") {
           throw new Error("This phone number is already in use");
         }
-        throw updateError;
+        throw upsertError;
       }
 
-      if (!data || data.length === 0) {
-        throw new Error("No profile found to update");
-      }
-
-      console.log("Profile updated successfully:", data[0]);
+      console.log("Profile saved successfully:", data?.[0]);
 
       // Send verification code via backend
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error("No active session");
       }
 
-      const response = await fetch('/api/phone/send-code', {
-        method: 'POST',
+      const response = await fetch("/api/phone/send-code", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ phone_number: phone }),
       });
@@ -161,7 +180,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to send verification code');
+        throw new Error(result.error || "Failed to send verification code");
       }
 
       console.log("Verification code sent:", result);
@@ -194,16 +213,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       }
 
       // Verify code via backend
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error("No active session");
       }
 
-      const response = await fetch('/api/phone/verify', {
-        method: 'POST',
+      const response = await fetch("/api/phone/verify", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ code: verificationCode }),
       });
@@ -211,7 +232,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Invalid or expired verification code');
+        throw new Error(result.error || "Invalid or expired verification code");
       }
 
       console.log("Phone verified successfully:", result);
@@ -221,7 +242,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         .from("user_profiles")
         .select("*")
         .eq("user_id", userId)
-        .single();
+        .maybeSingle();
 
       if (updateError) {
         console.error("Error fetching updated profile:", updateError);
@@ -231,7 +252,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       await new Promise((resolve) => setTimeout(resolve, 300));
       setStep(3);
       setIsTransitioning(false);
-      
+
       // Load integrations when entering step 3
       loadIntegrationsForStep3();
     } catch (err: any) {
@@ -297,17 +318,19 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
     try {
       // Get session token
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (!session?.access_token) {
         throw new Error("No active session");
       }
 
       // Resend verification code
-      const response = await fetch('/api/phone/send-code', {
-        method: 'POST',
+      const response = await fetch("/api/phone/send-code", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify({ phone_number: phone }),
       });
@@ -315,7 +338,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       const result = await response.json();
 
       if (!response.ok) {
-        throw new Error(result.error || 'Failed to resend verification code');
+        throw new Error(result.error || "Failed to resend verification code");
       }
 
       console.log("Verification code resent:", result);
@@ -332,10 +355,12 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     setLoadingIntegrations(true);
     try {
       const integrations = await getIntegrations();
-      setAvailableIntegrations(integrations.filter(i => !i.coming_soon));
-      
+      setAvailableIntegrations(integrations.filter((i) => !i.coming_soon));
+
       // Get user's connected integrations
-      const { data: { session } } = await supabase.auth.getSession();
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
       if (session) {
         const connected = await getUserIntegrations(session.access_token);
         setUserIntegrations(connected);
@@ -348,7 +373,11 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   };
 
   const isIntegrationConnected = (slug: string) => {
-    return userIntegrations.some(ui => ui.integration.slug === slug && (ui.composio_connected || ui.hyperspell_connected));
+    return userIntegrations.some(
+      (ui) =>
+        ui.integration.slug === slug &&
+        (ui.composio_connected || ui.hyperspell_connected)
+    );
   };
 
   const hasAnyConnections = () => {
@@ -463,7 +492,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   </h2>
                   <p className="text-muted-foreground text-pretty">
                     We've sent a verification code to{" "}
-                    <span className="font-medium text-foreground">{formatPhoneNumber(phone)}</span>
+                    <span className="font-medium text-foreground">
+                      {formatPhoneNumber(phone)}
+                    </span>
                   </p>
                 </div>
 
@@ -545,51 +576,55 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     </div>
                   ) : (
                     <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
-                        {availableIntegrations.map((integration) => {
-                          const isConnected = isIntegrationConnected(integration.slug);
-                          return (
-                            <div
-                              key={integration.id}
-                              className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                                isConnected
-                                  ? "border-green-200 bg-green-50/50"
-                                  : "border-gray-200 hover:border-gray-300"
-                              }`}
-                            >
-                              <div className="flex items-center gap-4">
-                                <div className="shrink-0">
-                                  {getIntegrationIcon(integration.slug, '2x') || (
-                                    <div className="h-8 w-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-sm">
-                                      {integration.name.charAt(0)}
-                                    </div>
-                                  )}
-                                </div>
-                                <div>
-                                  <h3 className="font-semibold text-base">
-                                    {integration.name}
-                                  </h3>
-                                  <p className="text-sm text-muted-foreground">
-                                    {integration.description}
-                                  </p>
-                                </div>
-                              </div>
-                              <div className="min-w-[120px]">
-                                {isConnected ? (
-                                  <div className="flex items-center gap-2 text-green-600 font-medium text-sm">
-                                    <Check className="h-4 w-4" />
-                                    Connected
+                      {availableIntegrations.map((integration) => {
+                        const isConnected = isIntegrationConnected(
+                          integration.slug
+                        );
+                        return (
+                          <div
+                            key={integration.id}
+                            className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                              isConnected
+                                ? "border-green-200 bg-green-50/50"
+                                : "border-gray-200 hover:border-gray-300"
+                            }`}
+                          >
+                            <div className="flex items-center gap-4">
+                              <div className="shrink-0">
+                                {getIntegrationIcon(integration.slug, "2x") || (
+                                  <div className="h-8 w-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-sm">
+                                    {integration.name.charAt(0)}
                                   </div>
-                                ) : (
-                                  <ConnectIntegrationButton
-                                    integrationSlug={integration.slug}
-                                    integrationName={integration.name}
-                                    onConnectionComplete={loadIntegrationsForStep3}
-                                  />
                                 )}
                               </div>
+                              <div>
+                                <h3 className="font-semibold text-base">
+                                  {integration.name}
+                                </h3>
+                                <p className="text-sm text-muted-foreground">
+                                  {integration.description}
+                                </p>
+                              </div>
                             </div>
-                          );
-                        })}
+                            <div className="min-w-[120px]">
+                              {isConnected ? (
+                                <div className="flex items-center gap-2 text-green-600 font-medium text-sm">
+                                  <Check className="h-4 w-4" />
+                                  Connected
+                                </div>
+                              ) : (
+                                <ConnectIntegrationButton
+                                  integrationSlug={integration.slug}
+                                  integrationName={integration.name}
+                                  onConnectionComplete={
+                                    loadIntegrationsForStep3
+                                  }
+                                />
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 
@@ -601,7 +636,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     {loading ? "Completing..." : "Complete Setup"}
                     {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
                   </Button>
-                  
+
                   {!hasAnyConnections() && !loadingIntegrations && (
                     <p className="text-xs text-center text-muted-foreground">
                       Connect at least one service to continue
