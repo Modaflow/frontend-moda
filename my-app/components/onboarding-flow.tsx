@@ -12,6 +12,9 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { getPhoneValidationError, formatPhoneNumber } from "@/lib/phone-utils";
 import { PhoneInput } from "@/components/phone-input";
+import { HyperspellConnectButton } from "@/components/HyperspellConnectButton";
+import { ConnectIntegrationButton } from "@/components/ConnectIntegrationButton";
+import { getIntegrations, getUserIntegrations, type Integration, type UserIntegration } from "@/lib/integrations";
 
 interface OnboardingFlowProps {
   onComplete: () => void;
@@ -32,6 +35,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [userId, setUserId] = useState<string | null>(null);
+  const [availableIntegrations, setAvailableIntegrations] = useState<Integration[]>([]);
+  const [userIntegrations, setUserIntegrations] = useState<UserIntegration[]>([]);
+  const [loadingIntegrations, setLoadingIntegrations] = useState(false);
   const router = useRouter();
 
   useEffect(() => {
@@ -207,6 +213,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
       await new Promise((resolve) => setTimeout(resolve, 300));
       setStep(3);
       setIsTransitioning(false);
+      
+      // Load integrations when entering step 3
+      loadIntegrationsForStep3();
     } catch (err: any) {
       console.error("Step 2 error:", err);
       setError(err.message || "Failed to verify phone");
@@ -217,14 +226,14 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   const handleStep3Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!userId || connectedIntegrations.size === 0) return;
+    if (!userId || !hasAnyConnections()) return;
 
     setLoading(true);
     setError("");
 
     try {
       console.log("Completing onboarding for user:", userId);
-      console.log("Connected integrations:", Array.from(connectedIntegrations));
+      console.log("Connected integrations:", userIntegrations.length);
 
       // Mark onboarding as completed
       const { data, error: updateError } = await supabase
@@ -301,59 +310,51 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
     }
   };
 
-  const handleConnectIntegration = (integration: string) => {
-    setConnectedIntegrations((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(integration)) {
-        newSet.delete(integration);
-      } else {
-        newSet.add(integration);
+  const loadIntegrationsForStep3 = async () => {
+    setLoadingIntegrations(true);
+    try {
+      const integrations = await getIntegrations();
+      setAvailableIntegrations(integrations.filter(i => !i.coming_soon));
+      
+      // Get user's connected integrations
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const connected = await getUserIntegrations(session.access_token);
+        setUserIntegrations(connected);
       }
-      return newSet;
-    });
+    } catch (err) {
+      console.error("Failed to load integrations:", err);
+    } finally {
+      setLoadingIntegrations(false);
+    }
   };
 
-  const integrations = [
-    {
-      id: "slack",
-      name: "Slack",
-      description: "Team communication platform",
-      icon: (
-        <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"
-            fill="#E01E5A"
-          />
-        </svg>
-      ),
-    },
-    {
-      id: "gmail",
-      name: "Gmail",
-      description: "Email and communication",
-      icon: (
-        <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L12 9.366l8.073-5.873C21.69 2.28 24 3.434 24 5.457z"
-            fill="#EA4335"
-          />
-        </svg>
-      ),
-    },
-    {
-      id: "notion",
-      name: "Notion",
-      description: "Notes and documentation",
-      icon: (
-        <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none">
-          <path
-            d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z"
-            fill="currentColor"
-          />
-        </svg>
-      ),
-    },
-  ];
+  const isIntegrationConnected = (slug: string) => {
+    return userIntegrations.some(ui => ui.integration.slug === slug && (ui.composio_connected || ui.hyperspell_connected));
+  };
+
+  const hasAnyConnections = () => {
+    return userIntegrations.length > 0;
+  };
+
+  // Icons for integrations
+  const integrationIcons: Record<string, React.ReactNode> = {
+    gmail: (
+      <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none">
+        <path d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L12 9.366l8.073-5.873C21.69 2.28 24 3.434 24 5.457z" fill="#EA4335"/>
+      </svg>
+    ),
+    notion: (
+      <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none">
+        <path d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z" fill="currentColor"/>
+      </svg>
+    ),
+    slack: (
+      <svg className="h-8 w-8" viewBox="0 0 24 24" fill="none">
+        <path d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z" fill="#E01E5A"/>
+      </svg>
+    ),
+  };
 
   return (
     <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
@@ -532,6 +533,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   </p>
                 </div>
 
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50/50 border border-blue-100">
+                  <Shield className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                  <div className="space-y-1">
+                    <p className="text-sm font-medium text-blue-900">
+                      Secure & Private
+                    </p>
+                    <p className="text-xs text-blue-700 leading-relaxed">
+                      Your data is encrypted. You can disconnect anytime.
+                    </p>
+                  </div>
+                </div>
+
                 <form onSubmit={handleStep3Submit} className="space-y-4">
                   {error && (
                     <div className="p-3 text-sm text-red-600 bg-red-50 rounded-xl">
@@ -539,68 +552,93 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                     </div>
                   )}
 
-                  <div className="space-y-3">
-                    {integrations.map((integration) => {
-                      const isConnected = connectedIntegrations.has(
-                        integration.id
-                      );
-                      return (
-                        <div
-                          key={integration.id}
-                          className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
-                            isConnected
-                              ? "border-green-200 bg-green-50/50"
-                              : "border-gray-200 hover:border-gray-300 hover:bg-gray-50/50"
-                          }`}
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="flex-shrink-0">
-                              {integration.icon}
-                            </div>
-                            <div>
-                              <h3 className="font-semibold text-base">
-                                {integration.name}
-                              </h3>
-                              <p className="text-sm text-muted-foreground">
-                                {integration.description}
-                              </p>
-                            </div>
+                  {loadingIntegrations ? (
+                    <div className="flex justify-center py-8">
+                      <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+                    </div>
+                  ) : (
+                    <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2 scrollbar-thin">
+                      {/* Hyperspell First - Special Card */}
+                      <div className="p-4 rounded-xl border-2 border-purple-200 bg-gradient-to-r from-purple-50 to-blue-50">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="h-8 w-8 rounded-lg bg-purple-500 flex items-center justify-center">
+                            <svg className="h-5 w-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
                           </div>
-                          <Button
-                            type="button"
-                            onClick={() =>
-                              handleConnectIntegration(integration.id)
-                            }
-                            variant={isConnected ? "ghost" : "default"}
-                            disabled={loading}
-                            className={`min-w-[100px] rounded-xl transition-all ${
-                              isConnected
-                                ? "bg-green-500 hover:bg-green-600 text-white pointer-events-none"
-                                : "hover:scale-105"
-                            }`}
-                          >
-                            {isConnected ? (
-                              <>
-                                <Check className="h-4 w-4 mr-2" />
-                                Connected
-                              </>
-                            ) : (
-                              "Sign in"
-                            )}
-                          </Button>
+                          <div className="flex-1">
+                            <h3 className="font-semibold text-base">Hyperspell Data</h3>
+                            <p className="text-xs text-purple-700">AI-powered memory & search</p>
+                          </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <HyperspellConnectButton />
+                      </div>
+
+                      {/* Scrolling Composio Integrations */}
+                      <div className="space-y-3">
+                        {availableIntegrations.map((integration) => {
+                          const isConnected = isIntegrationConnected(integration.slug);
+                          return (
+                            <div
+                              key={integration.id}
+                              className={`flex items-center justify-between p-4 rounded-xl border transition-all ${
+                                isConnected
+                                  ? "border-green-200 bg-green-50/50"
+                                  : "border-gray-200 hover:border-gray-300"
+                              }`}
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className="flex-shrink-0">
+                                  {integrationIcons[integration.slug] || (
+                                    <div className="h-8 w-8 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-sm">
+                                      {integration.name.charAt(0)}
+                                    </div>
+                                  )}
+                                </div>
+                                <div>
+                                  <h3 className="font-semibold text-base">
+                                    {integration.name}
+                                  </h3>
+                                  <p className="text-sm text-muted-foreground">
+                                    {integration.description}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="min-w-[120px]">
+                                {isConnected ? (
+                                  <div className="flex items-center gap-2 text-green-600 font-medium text-sm">
+                                    <Check className="h-4 w-4" />
+                                    Connected
+                                  </div>
+                                ) : (
+                                  <ConnectIntegrationButton
+                                    integrationSlug={integration.slug}
+                                    integrationName={integration.name}
+                                    onConnectionComplete={loadIntegrationsForStep3}
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
 
                   <Button
                     type="submit"
                     className="w-full h-12 rounded-xl text-base mt-6"
-                    disabled={connectedIntegrations.size === 0 || loading}
+                    disabled={!hasAnyConnections() || loading}
                   >
                     {loading ? "Completing..." : "Complete Setup"}
                     {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
                   </Button>
+                  
+                  {!hasAnyConnections() && !loadingIntegrations && (
+                    <p className="text-xs text-center text-muted-foreground">
+                      Connect at least one service to continue
+                    </p>
+                  )}
                 </form>
               </div>
             )}
