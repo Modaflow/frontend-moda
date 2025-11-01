@@ -20,9 +20,14 @@ export default function Home() {
     setAuthModalOpen(true)
   }
 
-  const handleAuthSuccess = () => {
+  const handleAuthSuccess = (needsOnboarding: boolean) => {
     setAuthModalOpen(false)
-    setShowOnboarding(true)
+    if (needsOnboarding) {
+      setShowOnboarding(true)
+    } else {
+      // User already completed onboarding, redirect to integrations
+      window.location.href = '/integrations'
+    }
   }
 
   const handleOnboardingComplete = () => {

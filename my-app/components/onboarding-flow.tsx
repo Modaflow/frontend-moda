@@ -1,70 +1,238 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent } from "@/components/ui/card"
-import { ArrowRight, Check, ArrowLeft, Loader2, Shield } from "lucide-react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Card, CardContent } from "@/components/ui/card";
+import { ArrowRight, Check, ArrowLeft, Loader2, Shield } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase";
 
 interface OnboardingFlowProps {
-  onComplete: () => void
+  onComplete: () => void;
 }
 
 export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
-  const [step, setStep] = useState(1)
-  const [name, setName] = useState("")
-  const [phone, setPhone] = useState("")
-  const [verificationCode, setVerificationCode] = useState("")
-  const [resendState, setResendState] = useState<"idle" | "loading" | "success">("idle")
-  const [connectedIntegrations, setConnectedIntegrations] = useState<Set<string>>(new Set())
-  const [isTransitioning, setIsTransitioning] = useState(false)
-  const router = useRouter()
+  const [step, setStep] = useState(1);
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [resendState, setResendState] = useState<
+    "idle" | "loading" | "success"
+  >("idle");
+  const [connectedIntegrations, setConnectedIntegrations] = useState<
+    Set<string>
+  >(new Set());
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    // Get current user and ensure profile exists
+    const getCurrentUser = async () => {
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+
+        // Check if profile exists, create if not
+        const { data: profile, error: profileError } = await supabase
+          .from("user_profiles")
+          .select("id")
+          .eq("user_id", user.id)
+          .single();
+
+        if (profileError && profileError.code === "PGRST116") {
+          // Profile doesn't exist, create it using upsert to avoid duplicates
+          console.log("Creating user profile...");
+          const { error: createError } = await supabase
+            .from("user_profiles")
+            .upsert(
+              {
+                user_id: user.id,
+                full_name: "",
+                phone_number: "",
+                onboarding_completed: false,
+              },
+              {
+                onConflict: "user_id",
+              }
+            );
+
+          if (createError) {
+            console.error("Failed to create profile:", createError);
+            setError("Failed to initialize user profile");
+          } else {
+            console.log("Profile created successfully");
+          }
+        } else if (profileError) {
+          console.error("Error checking profile:", profileError);
+          setError("Failed to check user profile");
+        }
+      }
+    };
+    getCurrentUser();
+  }, []);
 
   const handleStep1Submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsTransitioning(true)
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    setStep(2)
-    setIsTransitioning(false)
-  }
+    e.preventDefault();
+    if (!userId) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      console.log("Updating profile with:", { name, phone, userId });
+
+      // Update user profile with name and phone
+      const { data, error: updateError } = await supabase
+        .from("user_profiles")
+        .update({
+          full_name: name,
+          phone_number: phone,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .select();
+
+      console.log("Update result:", { data, error: updateError });
+
+      if (updateError) throw updateError;
+
+      if (!data || data.length === 0) {
+        throw new Error("No profile found to update");
+      }
+
+      console.log("Profile updated successfully:", data[0]);
+
+      setIsTransitioning(true);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      setStep(2);
+      setIsTransitioning(false);
+    } catch (err: any) {
+      console.error("Step 1 error:", err);
+      setError(err.message || "Failed to save profile");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleStep2Submit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsTransitioning(true)
-    await new Promise((resolve) => setTimeout(resolve, 300))
-    setStep(3)
-    setIsTransitioning(false)
-  }
+    e.preventDefault();
+    if (!userId) return;
 
-  const handleStep3Submit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (connectedIntegrations.size > 0) {
-      router.push("/integrations")
+    setLoading(true);
+    setError("");
+
+    try {
+      console.log("Marking phone as verified for user:", userId);
+
+      // For now, we'll skip actual phone verification and just mark as verified
+      // In production, you'd verify the code with a service like Twilio
+      const { data, error: updateError } = await supabase
+        .from("user_profiles")
+        .update({
+          phone_verified: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .select();
+
+      console.log("Phone verification result:", { data, error: updateError });
+
+      if (updateError) throw updateError;
+
+      if (!data || data.length === 0) {
+        throw new Error("No profile found to update");
+      }
+
+      console.log("Phone verified successfully:", data[0]);
+
+      setIsTransitioning(true);
+      await new Promise((resolve) => setTimeout(resolve, 300));
+      setStep(3);
+      setIsTransitioning(false);
+    } catch (err: any) {
+      console.error("Step 2 error:", err);
+      setError(err.message || "Failed to verify phone");
+    } finally {
+      setLoading(false);
     }
-  }
+  };
+
+  const handleStep3Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userId || connectedIntegrations.size === 0) return;
+
+    setLoading(true);
+    setError("");
+
+    try {
+      console.log("Completing onboarding for user:", userId);
+      console.log("Connected integrations:", Array.from(connectedIntegrations));
+
+      // Mark onboarding as completed
+      const { data, error: updateError } = await supabase
+        .from("user_profiles")
+        .update({
+          onboarding_completed: true,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("user_id", userId)
+        .select();
+
+      console.log("Onboarding completion result:", {
+        data,
+        error: updateError,
+      });
+
+      if (updateError) throw updateError;
+
+      if (!data || data.length === 0) {
+        throw new Error("No profile found to update");
+      }
+
+      console.log("Onboarding completed successfully:", data[0]);
+
+      // In a real app, you'd save the connected integrations to user_integrations table
+      // For now, we'll just complete the onboarding
+
+      console.log("Redirecting to integrations page...");
+
+      onComplete();
+      window.location.href = "/integrations";
+    } catch (err: any) {
+      console.error("Step 3 error:", err);
+      setError(err.message || "Failed to complete onboarding");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleResend = async () => {
-    setResendState("loading")
-    await new Promise((resolve) => setTimeout(resolve, 1000))
-    setResendState("success")
-    setTimeout(() => setResendState("idle"), 2000)
-  }
+    setResendState("loading");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    setResendState("success");
+    setTimeout(() => setResendState("idle"), 2000);
+  };
 
   const handleConnectIntegration = (integration: string) => {
     setConnectedIntegrations((prev) => {
-      const newSet = new Set(prev)
+      const newSet = new Set(prev);
       if (newSet.has(integration)) {
-        newSet.delete(integration)
+        newSet.delete(integration);
       } else {
-        newSet.add(integration)
+        newSet.add(integration);
       }
-      return newSet
-    })
-  }
+      return newSet;
+    });
+  };
 
   const integrations = [
     {
@@ -106,15 +274,13 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         </svg>
       ),
     },
-  ]
+  ];
 
   return (
     <div className="relative z-10 flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-lg shadow-2xl border-0 bg-white/95 backdrop-blur-sm">
         <CardContent className="p-8 md:p-12">
-          <div className="text-center mb-8">
-            
-          </div>
+          <div className="text-center mb-8"></div>
 
           {step > 1 && (
             <Button
@@ -129,31 +295,47 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
           <div className="flex items-center justify-center gap-2 mb-10">
             <div
-              className={`h-1.5 w-24 rounded-full transition-all duration-500 ${step >= 1 ? "bg-black" : "bg-gray-200"}`}
+              className={`h-1.5 w-24 rounded-full transition-all duration-500 ${
+                step >= 1 ? "bg-black" : "bg-gray-200"
+              }`}
             />
             <div
-              className={`h-1.5 w-24 rounded-full transition-all duration-500 ${step >= 2 ? "bg-black" : "bg-gray-200"}`}
+              className={`h-1.5 w-24 rounded-full transition-all duration-500 ${
+                step >= 2 ? "bg-black" : "bg-gray-200"
+              }`}
             />
             <div
-              className={`h-1.5 w-24 rounded-full transition-all duration-500 ${step >= 3 ? "bg-black" : "bg-gray-200"}`}
+              className={`h-1.5 w-24 rounded-full transition-all duration-500 ${
+                step >= 3 ? "bg-black" : "bg-gray-200"
+              }`}
             />
           </div>
 
           <div
-            className={`transition-opacity duration-300 ${isTransitioning ? "opacity-0" : "opacity-100"}`}
+            className={`transition-opacity duration-300 ${
+              isTransitioning ? "opacity-0" : "opacity-100"
+            }`}
             key={step}
           >
             {/* Step 1: Name and Phone */}
             {step === 1 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-center space-y-2">
-                  <h2 className="text-3xl font-semibold text-balance">Tell us about yourself</h2>
+                  <h2 className="text-3xl font-semibold text-balance">
+                    Tell us about yourself
+                  </h2>
                   <p className="text-muted-foreground text-pretty">
                     We'll need a few details to personalize your experience
                   </p>
                 </div>
 
                 <form onSubmit={handleStep1Submit} className="space-y-5">
+                  {error && (
+                    <div className="p-3 text-sm text-red-600 bg-red-50 rounded-xl">
+                      {error}
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <Label htmlFor="name" className="text-sm font-medium">
                       Full Name
@@ -165,6 +347,7 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       value={name}
                       onChange={(e) => setName(e.target.value)}
                       required
+                      disabled={loading}
                       className="h-12 rounded-xl"
                     />
                   </div>
@@ -180,13 +363,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       required
+                      disabled={loading}
                       className="h-12 rounded-xl"
                     />
                   </div>
 
-                  <Button type="submit" className="w-full h-12 rounded-xl text-base mt-6">
-                    Continue
-                    <ArrowRight className="ml-2 h-5 w-5" />
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-12 rounded-xl text-base mt-6"
+                  >
+                    {loading ? "Saving..." : "Continue"}
+                    {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
                   </Button>
                 </form>
               </div>
@@ -196,13 +384,22 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {step === 2 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-center space-y-2">
-                  <h2 className="text-3xl font-semibold text-balance">Verify your phone</h2>
+                  <h2 className="text-3xl font-semibold text-balance">
+                    Verify your phone
+                  </h2>
                   <p className="text-muted-foreground text-pretty">
-                    We've sent a verification code to <span className="font-medium text-foreground">{phone}</span>
+                    We've sent a verification code to{" "}
+                    <span className="font-medium text-foreground">{phone}</span>
                   </p>
                 </div>
 
                 <form onSubmit={handleStep2Submit} className="space-y-5">
+                  {error && (
+                    <div className="p-3 text-sm text-red-600 bg-red-50 rounded-xl">
+                      {error}
+                    </div>
+                  )}
+
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
                       <Label htmlFor="code" className="text-sm font-medium">
@@ -212,10 +409,14 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                         type="button"
                         className="text-sm text-primary hover:underline font-medium flex items-center gap-1.5"
                         onClick={handleResend}
-                        disabled={resendState !== "idle"}
+                        disabled={resendState !== "idle" || loading}
                       >
-                        {resendState === "loading" && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                        {resendState === "success" && <Check className="h-3.5 w-3.5" />}
+                        {resendState === "loading" && (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        )}
+                        {resendState === "success" && (
+                          <Check className="h-3.5 w-3.5" />
+                        )}
                         {resendState === "idle" && "Resend"}
                         {resendState === "loading" && "Sending..."}
                         {resendState === "success" && "Sent!"}
@@ -229,13 +430,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                       onChange={(e) => setVerificationCode(e.target.value)}
                       required
                       maxLength={6}
+                      disabled={loading}
                       className="h-12 rounded-xl text-center text-2xl tracking-widest"
                     />
                   </div>
 
-                  <Button type="submit" className="w-full h-12 rounded-xl text-base mt-6">
-                    Verify & Continue
-                    <ArrowRight className="ml-2 h-5 w-5" />
+                  <Button
+                    type="submit"
+                    disabled={loading}
+                    className="w-full h-12 rounded-xl text-base mt-6"
+                  >
+                    {loading ? "Verifying..." : "Verify & Continue"}
+                    {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
                   </Button>
                 </form>
               </div>
@@ -244,24 +450,39 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
             {step === 3 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="text-center space-y-2">
-                  <h2 className="text-3xl font-semibold text-balance">Connect your tools</h2>
-                  <p className="text-muted-foreground text-pretty">Connect at least one integration to continue</p>
+                  <h2 className="text-3xl font-semibold text-balance">
+                    Connect your tools
+                  </h2>
+                  <p className="text-muted-foreground text-pretty">
+                    Connect at least one integration to continue
+                  </p>
                 </div>
 
                 <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50/50 border border-blue-100">
                   <Shield className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
                   <div className="space-y-1">
-                    <p className="text-sm font-medium text-blue-900">Secure & Private</p>
+                    <p className="text-sm font-medium text-blue-900">
+                      Secure & Private
+                    </p>
                     <p className="text-xs text-blue-700 leading-relaxed">
-                      Your data is encrypted and we never store your credentials. You can disconnect anytime.
+                      Your data is encrypted and we never store your
+                      credentials. You can disconnect anytime.
                     </p>
                   </div>
                 </div>
 
                 <form onSubmit={handleStep3Submit} className="space-y-4">
+                  {error && (
+                    <div className="p-3 text-sm text-red-600 bg-red-50 rounded-xl">
+                      {error}
+                    </div>
+                  )}
+
                   <div className="space-y-3">
                     {integrations.map((integration) => {
-                      const isConnected = connectedIntegrations.has(integration.id)
+                      const isConnected = connectedIntegrations.has(
+                        integration.id
+                      );
                       return (
                         <div
                           key={integration.id}
@@ -272,16 +493,25 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                           }`}
                         >
                           <div className="flex items-center gap-4">
-                            <div className="flex-shrink-0">{integration.icon}</div>
+                            <div className="flex-shrink-0">
+                              {integration.icon}
+                            </div>
                             <div>
-                              <h3 className="font-semibold text-base">{integration.name}</h3>
-                              <p className="text-sm text-muted-foreground">{integration.description}</p>
+                              <h3 className="font-semibold text-base">
+                                {integration.name}
+                              </h3>
+                              <p className="text-sm text-muted-foreground">
+                                {integration.description}
+                              </p>
                             </div>
                           </div>
                           <Button
                             type="button"
-                            onClick={() => handleConnectIntegration(integration.id)}
+                            onClick={() =>
+                              handleConnectIntegration(integration.id)
+                            }
                             variant={isConnected ? "ghost" : "default"}
+                            disabled={loading}
                             className={`min-w-[100px] rounded-xl transition-all ${
                               isConnected
                                 ? "bg-green-500 hover:bg-green-600 text-white pointer-events-none"
@@ -298,17 +528,17 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                             )}
                           </Button>
                         </div>
-                      )
+                      );
                     })}
                   </div>
 
                   <Button
                     type="submit"
                     className="w-full h-12 rounded-xl text-base mt-6"
-                    disabled={connectedIntegrations.size === 0}
+                    disabled={connectedIntegrations.size === 0 || loading}
                   >
-                    Complete Setup
-                    <ArrowRight className="ml-2 h-5 w-5" />
+                    {loading ? "Completing..." : "Complete Setup"}
+                    {!loading && <ArrowRight className="ml-2 h-5 w-5" />}
                   </Button>
                 </form>
               </div>
@@ -317,5 +547,5 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         </CardContent>
       </Card>
     </div>
-  )
+  );
 }
