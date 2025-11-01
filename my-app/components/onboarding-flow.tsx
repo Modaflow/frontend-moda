@@ -532,19 +532,6 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
                   </p>
                 </div>
 
-                <div className="flex items-start gap-3 p-4 rounded-xl bg-blue-50/50 border border-blue-100">
-                  <Shield className="h-5 w-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium text-blue-900">
-                      Secure & Private
-                    </p>
-                    <p className="text-xs text-blue-700 leading-relaxed">
-                      Your data is encrypted and we never store your
-                      credentials. You can disconnect anytime.
-                    </p>
-                  </div>
-                </div>
-
                 <form onSubmit={handleStep3Submit} className="space-y-4">
                   {error && (
                     <div className="p-3 text-sm text-red-600 bg-red-50 rounded-xl">
