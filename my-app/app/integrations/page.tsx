@@ -5,6 +5,7 @@ import { Navbar } from "@/components/navbar"
 import { X, Check, Sparkles, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ConnectIntegrationButton } from "@/components/ConnectIntegrationButton"
+import { HyperspellConnectButton } from "@/components/HyperspellConnectButton"
 import { supabase } from "@/lib/supabase"
 import { getIntegrations, getUserIntegrations, disconnectIntegration, type Integration, type UserIntegration } from "@/lib/integrations"
 
@@ -42,6 +43,20 @@ const IntegrationIcons: Record<string, React.ReactNode> = {
       <path d="M11.58 22l-3.42-6.5L1.15 15l3.42 6.5h7.01z" fill="#00832D" />
       <path d="M18.72 4.5l3.42 6.5L16.43 22l-4.85-12 7.14-5.5z" fill="#2684FC" />
       <path d="M11.58 22h4.85l-4.85-12-3.42 6.5 3.42 5.5z" fill="#FFBA00" />
+    </svg>
+  ),
+  "google-calendar": (
+    <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
+      <path
+        d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5zm2 4h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"
+        fill="#4285F4"
+      />
+    </svg>
+  ),
+  "google-contacts": (
+    <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
+      <circle cx="12" cy="8" r="4" fill="#34A853" />
+      <path d="M12 14c-5.5 0-10 2.5-10 5.5V22h20v-2.5c0-3-4.5-5.5-10-5.5z" fill="#34A853" />
     </svg>
   ),
   dropbox: (
@@ -103,11 +118,18 @@ export default function IntegrationsPage() {
   }
 
   const isConnected = (slug: string): boolean => {
-    return userIntegrations.some((ui) => ui.integration.slug === slug && ui.composio_connected)
+    // An integration is "connected" if either Composio OR Hyperspell is connected
+    return userIntegrations.some((ui) => 
+      ui.integration.slug === slug && 
+      (ui.composio_connected || ui.hyperspell_connected)
+    )
   }
 
   const getConnectedIntegration = (slug: string): UserIntegration | undefined => {
-    return userIntegrations.find((ui) => ui.integration.slug === slug && ui.composio_connected)
+    return userIntegrations.find((ui) => 
+      ui.integration.slug === slug && 
+      (ui.composio_connected || ui.hyperspell_connected)
+    )
   }
 
   const handleDisconnect = async (slug: string, name: string) => {
@@ -163,6 +185,22 @@ export default function IntegrationsPage() {
       <Navbar />
 
       <main className="container mx-auto px-6 py-12 max-w-6xl">
+        {/* Hyperspell Connect Button */}
+        <div className="mb-8 p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl border border-purple-100">
+          <div className="flex items-start justify-between gap-6">
+            <div className="flex-1">
+              <h3 className="text-lg font-serif font-medium text-black mb-2">Hyperspell Data Access</h3>
+              <p className="text-sm text-black/60 mb-4">
+                Connect your accounts to Hyperspell to enable AI-powered data querying and memory features.
+                This allows you to ask questions about your emails, documents, and more.
+              </p>
+            </div>
+            <div className="w-64">
+              <HyperspellConnectButton />
+            </div>
+          </div>
+        </div>
+
         {isEmpty && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
@@ -201,9 +239,19 @@ export default function IntegrationsPage() {
                     key={integration.id}
                     className="group relative border-2 border-green-500/20 rounded-2xl bg-white backdrop-blur-sm hover:bg-white hover:border-green-500/30 hover:shadow-xl hover:shadow-green-500/10 transition-all duration-300 p-8"
                   >
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-                      <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                      <span className="text-xs font-medium text-green-700">Connected</span>
+                    <div className="absolute top-3 left-3 flex flex-col gap-1.5">
+                      {userIntegrations.find((ui) => ui.integration.slug === integration.slug)?.composio_connected && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20">
+                          <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                          <span className="text-xs font-medium text-green-700">Actions</span>
+                        </div>
+                      )}
+                      {userIntegrations.find((ui) => ui.integration.slug === integration.slug)?.hyperspell_connected && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
+                          <div className="h-1.5 w-1.5 rounded-full bg-purple-500" />
+                          <span className="text-xs font-medium text-purple-700">Data</span>
+                        </div>
+                      )}
                     </div>
 
                     <button
@@ -220,7 +268,13 @@ export default function IntegrationsPage() {
                     </button>
 
                     <div className="flex flex-col items-center gap-4 text-center pt-4">
-                      <div className="flex-shrink-0">{IntegrationIcons[integration.slug]}</div>
+                      <div className="flex-shrink-0">
+                        {IntegrationIcons[integration.slug] || (
+                          <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-sm">
+                            {integration.name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
                       <div className="space-y-1">
                         <h3 className="text-base font-medium text-black">{integration.name}</h3>
                         <p className="text-xs text-black/40">{integration.description}</p>
@@ -261,12 +315,16 @@ export default function IntegrationsPage() {
 
                       <div className={`flex flex-col items-center gap-4 text-center ${integration.coming_soon ? "pt-4" : ""}`}>
                         <div
-                          className={`flex-shrink-0 transition-opacity duration-300 ${
-                            integration.coming_soon ? "opacity-40" : "opacity-30 group-hover:opacity-100"
-                          }`}
-                        >
-                          {IntegrationIcons[integration.slug]}
-                        </div>
+                        className={`flex-shrink-0 transition-opacity duration-300 ${
+                          integration.coming_soon ? "opacity-40" : "opacity-30 group-hover:opacity-100"
+                        }`}
+                      >
+                        {IntegrationIcons[integration.slug] || (
+                          <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-sm">
+                            {integration.name.charAt(0)}
+                          </div>
+                        )}
+                      </div>
                         <div className="space-y-1">
                           <h3
                             className={`text-base font-medium transition-colors ${
