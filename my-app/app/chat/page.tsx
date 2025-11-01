@@ -19,12 +19,21 @@ export default function ChatPage() {
   const [input, setInput] = useState("")
   const [loading, setLoading] = useState(false)
   const [loadingHistory, setLoadingHistory] = useState(true)
+  const [polling, setPolling] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000"
 
   useEffect(() => {
     loadHistory()
+    
+    // Cleanup polling on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+      }
+    }
   }, [])
 
   useEffect(() => {
@@ -35,8 +44,9 @@ export default function ChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }
 
-  async function loadHistory() {
-    setLoadingHistory(true)
+  async function loadHistory(silent: boolean = false) {
+    if (!silent) setLoadingHistory(true)
+    
     try {
       const {
         data: { session },
@@ -54,13 +64,56 @@ export default function ChatPage() {
 
       const data = await response.json()
       if (data.messages) {
+        const newMessageCount = data.messages.length
+        const oldMessageCount = messages.length
+        
+        if (silent && newMessageCount > oldMessageCount) {
+          console.log(`📨 Received ${newMessageCount - oldMessageCount} new messages from execution agents`)
+          // Force state update
+          setMessages([...data.messages])
+          // Force scroll after state update
+          setTimeout(() => scrollToBottom(), 100)
+          return true // New messages received
+        }
+        
         setMessages(data.messages)
       }
+      return false // No new messages
     } catch (error) {
       console.error("Failed to load history:", error)
+      return false
     } finally {
-      setLoadingHistory(false)
+      if (!silent) setLoadingHistory(false)
     }
+  }
+
+  function startPolling() {
+    console.log("🔄 Starting to poll for execution agent results...")
+    setPolling(true)
+    
+    let pollCount = 0
+    const maxPolls = 60 // 2 minutes max
+    
+    pollingIntervalRef.current = setInterval(async () => {
+      pollCount++
+      console.log(`📡 Polling for new messages (${pollCount}/${maxPolls})`)
+      
+      const hasNewMessages = await loadHistory(true)
+      
+      // Stop if we got new messages or hit max polls
+      if (hasNewMessages || pollCount >= maxPolls) {
+        stopPolling()
+      }
+    }, 2000) // Poll every 2 seconds
+  }
+
+  function stopPolling() {
+    console.log("🛑 Stopping poll")
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current)
+      pollingIntervalRef.current = null
+    }
+    setPolling(false)
   }
 
   async function sendMessage(e: React.FormEvent) {
@@ -118,9 +171,15 @@ export default function ChatPage() {
         }
         setMessages((prev) => [...prev, assistantMessage])
 
-        // Show info about execution agents
+        // If execution agents were used, start polling for their results
         if (data.execution_agents_used > 0) {
-          console.log(`🤖 ${data.execution_agents_used} execution agents were used`)
+          console.log(`🤖 ${data.execution_agents_used} execution agents were used - starting poll for results`)
+          startPolling()
+          
+          // Stop polling after 2 minutes
+          setTimeout(() => {
+            stopPolling()
+          }, 120000)
         }
       } else {
         // Backend returned error
@@ -229,10 +288,11 @@ export default function ChatPage() {
                 </div>
               ))
             )}
-            {loading && (
+            {(loading || polling) && (
               <div className="flex justify-start">
-                <div className="bg-gray-100 rounded-2xl px-4 py-3">
+                <div className="bg-gray-100 rounded-2xl px-4 py-3 flex items-center gap-2">
                   <Loader2 className="h-5 w-5 animate-spin text-gray-500" />
+                  {polling && <span className="text-sm text-gray-600">Waiting for agents...</span>}
                 </div>
               </div>
             )}
