@@ -53,12 +53,20 @@ export function ConnectIntegrationButton({
 
       // Start polling for connection status
       const maxAttempts = 60 // 60 attempts = 2 minutes
+      const maxConsecutiveErrors = 5 // Stop after 5 consecutive errors
       let attempts = 0
+      let consecutiveErrors = 0
 
       const pollStatus = async () => {
         if (attempts >= maxAttempts) {
           setPolling(false)
           setError("Connection timeout. Please try again.")
+          return
+        }
+
+        if (consecutiveErrors >= maxConsecutiveErrors) {
+          setPolling(false)
+          setError("Connection check failed. Please try again.")
           return
         }
 
@@ -69,6 +77,7 @@ export function ConnectIntegrationButton({
 
           if (statusResult.status === "connected") {
             // Success!
+            consecutiveErrors = 0
             setPolling(false)
             setConnected(true)
 
@@ -94,11 +103,14 @@ export function ConnectIntegrationButton({
             }
           } else {
             // Still pending, poll again
+            consecutiveErrors = 0 // Reset on successful response
             setTimeout(pollStatus, 2000)
           }
         } catch (err) {
           console.error("Error checking status:", err)
-          // Continue polling despite errors
+          consecutiveErrors++
+          console.warn(`Poll error ${consecutiveErrors}/${maxConsecutiveErrors}`)
+          // Stop polling after too many errors
           setTimeout(pollStatus, 2000)
         }
       }

@@ -103,6 +103,18 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
         throw new Error(phoneError);
       }
 
+      // Check if phone number is already in use
+      const { data: existingPhone } = await supabase
+        .from("user_profiles")
+        .select("user_id")
+        .eq("phone_number", phone)
+        .neq("user_id", userId)
+        .single();
+
+      if (existingPhone) {
+        throw new Error("This phone number is already registered to another account");
+      }
+
       // Update user profile with name and phone
       const { data, error: updateError } = await supabase
         .from("user_profiles")
@@ -116,7 +128,13 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
       console.log("Update result:", { data, error: updateError });
 
-      if (updateError) throw updateError;
+      if (updateError) {
+        // Check if it's a unique constraint error
+        if (updateError.code === "23505") {
+          throw new Error("This phone number is already in use");
+        }
+        throw updateError;
+      }
 
       if (!data || data.length === 0) {
         throw new Error("No profile found to update");

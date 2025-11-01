@@ -53,12 +53,20 @@ export function HyperspellConnectButton() {
 
       // Poll to check when connections are made
       let pollAttempts = 0
+      let consecutiveErrors = 0
       const maxPollAttempts = 40 // 2 minutes max
+      const maxConsecutiveErrors = 5 // Stop after 5 consecutive errors
       
       const pollConnections = async () => {
         if (pollAttempts >= maxPollAttempts) {
           setLoading(false)
           setError("Timeout. Please refresh the page to see your connections.")
+          return
+        }
+        
+        if (consecutiveErrors >= maxConsecutiveErrors) {
+          setLoading(false)
+          setError("Connection check failed. Please refresh and try again.")
           return
         }
         
@@ -80,6 +88,7 @@ export function HyperspellConnectButton() {
             
             if (connectionsData.success && connectionsData.has_connections) {
               setLoading(false)
+              consecutiveErrors = 0
               
               // Close the auth window if still open
               if (hyperspellWindow && !hyperspellWindow.closed) {
@@ -91,16 +100,21 @@ export function HyperspellConnectButton() {
                 window.location.reload()
               }, 500)
             } else {
+              // Reset error count on successful response
+              consecutiveErrors = 0
               // Poll again
               setTimeout(pollConnections, 3000)
             }
           } else {
-            // Continue polling even on errors
+            // HTTP error - increment error count
+            consecutiveErrors++
+            console.warn(`Poll error ${consecutiveErrors}/${maxConsecutiveErrors}`)
             setTimeout(pollConnections, 3000)
           }
         } catch (err) {
-          console.error("Error checking Hyperspell connections:", err)
-          // Continue polling
+          // Network error - increment error count
+          consecutiveErrors++
+          console.error(`Hyperspell poll error ${consecutiveErrors}/${maxConsecutiveErrors}:`, err)
           setTimeout(pollConnections, 3000)
         }
       }
