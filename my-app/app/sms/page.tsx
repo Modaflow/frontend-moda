@@ -114,7 +114,7 @@ export default function SMSPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/30 via-white to-blue-50/50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50/30 via-white to-blue-50/50">
       <Navbar />
 
       <main className="container mx-auto px-6 py-12 max-w-4xl">

@@ -8,75 +8,7 @@ import { ConnectIntegrationButton } from "@/components/ConnectIntegrationButton"
 import { HyperspellConnectButton } from "@/components/HyperspellConnectButton"
 import { supabase } from "@/lib/supabase"
 import { getIntegrations, getUserIntegrations, disconnectIntegration, type Integration, type UserIntegration } from "@/lib/integrations"
-
-// Icon components
-const IntegrationIcons: Record<string, React.ReactNode> = {
-  slack: (
-    <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M5.042 15.165a2.528 2.528 0 0 1-2.52 2.523A2.528 2.528 0 0 1 0 15.165a2.527 2.527 0 0 1 2.522-2.52h2.52v2.52zM6.313 15.165a2.527 2.527 0 0 1 2.521-2.52 2.527 2.527 0 0 1 2.521 2.52v6.313A2.528 2.528 0 0 1 8.834 24a2.528 2.528 0 0 1-2.521-2.522v-6.313zM8.834 5.042a2.528 2.528 0 0 1-2.521-2.52A2.528 2.528 0 0 1 8.834 0a2.528 2.528 0 0 1 2.521 2.522v2.52H8.834zM8.834 6.313a2.528 2.528 0 0 1 2.521 2.521 2.528 2.528 0 0 1-2.521 2.521H2.522A2.528 2.528 0 0 1 0 8.834a2.528 2.528 0 0 1 2.522-2.521h6.312zM18.956 8.834a2.528 2.528 0 0 1 2.522-2.521A2.528 2.528 0 0 1 24 8.834a2.528 2.528 0 0 1-2.522 2.521h-2.522V8.834zM17.688 8.834a2.528 2.528 0 0 1-2.523 2.521 2.527 2.527 0 0 1-2.52-2.521V2.522A2.527 2.527 0 0 1 15.165 0a2.528 2.528 0 0 1 2.523 2.522v6.312zM15.165 18.956a2.528 2.528 0 0 1 2.523 2.522A2.528 2.528 0 0 1 15.165 24a2.527 2.527 0 0 1-2.52-2.522v-2.522h2.52zM15.165 17.688a2.527 2.527 0 0 1-2.52-2.523 2.526 2.526 0 0 1 2.52-2.52h6.313A2.527 2.527 0 0 1 24 15.165a2.528 2.528 0 0 1-2.522 2.523h-6.313z"
-        fill="#E01E5A"
-      />
-    </svg>
-  ),
-  notion: (
-    <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M4.459 4.208c.746.606 1.026.56 2.428.466l13.215-.793c.28 0 .047-.28-.046-.326L17.86 1.968c-.42-.326-.981-.7-2.055-.607L3.01 2.295c-.466.046-.56.28-.374.466zm.793 3.08v13.904c0 .747.373 1.027 1.214.98l14.523-.84c.841-.046.935-.56.935-1.167V6.354c0-.606-.233-.933-.748-.887l-15.177.887c-.56.047-.747.327-.747.933zm14.337.745c.093.42 0 .84-.42.888l-.7.14v10.264c-.608.327-1.168.514-1.635.514-.748 0-.935-.234-1.495-.933l-4.577-7.186v6.952L12.21 19s0 .84-1.168.84l-3.222.186c-.093-.186 0-.653.327-.746l.84-.233V9.854L7.822 9.76c-.094-.42.14-1.026.793-1.073l3.456-.233 4.764 7.279v-6.44l-1.215-.139c-.093-.514.28-.887.747-.933zM1.936 1.035l13.31-.98c1.634-.14 2.055-.047 3.082.7l4.249 2.986c.7.513.934.653.934 1.213v16.378c0 1.026-.373 1.634-1.68 1.726l-15.458.934c-.98.047-1.448-.093-1.962-.747l-3.129-4.06c-.56-.747-.793-1.306-.793-1.96V2.667c0-.839.374-1.54 1.447-1.632z"
-        fill="currentColor"
-      />
-    </svg>
-  ),
-  gmail: (
-    <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M24 5.457v13.909c0 .904-.732 1.636-1.636 1.636h-3.819V11.73L12 16.64l-6.545-4.91v9.273H1.636A1.636 1.636 0 0 1 0 19.366V5.457c0-2.023 2.309-3.178 3.927-1.964L12 9.366l8.073-5.873C21.69 2.28 24 3.434 24 5.457z"
-        fill="#EA4335"
-      />
-    </svg>
-  ),
-  "google-drive": (
-    <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
-      <path d="M7.71 3.5L1.15 15l3.42 6.5L11.13 10 7.71 3.5z" fill="#0066DA" />
-      <path d="M7.71 3.5L11.13 10l7.59-6.5H7.71z" fill="#00AC47" />
-      <path d="M16.43 22l6.56-11-3.42-6.5-9.99 17.5h6.85z" fill="#EA4335" />
-      <path d="M11.58 22l-3.42-6.5L1.15 15l3.42 6.5h7.01z" fill="#00832D" />
-      <path d="M18.72 4.5l3.42 6.5L16.43 22l-4.85-12 7.14-5.5z" fill="#2684FC" />
-      <path d="M11.58 22h4.85l-4.85-12-3.42 6.5 3.42 5.5z" fill="#FFBA00" />
-    </svg>
-  ),
-  "google-calendar": (
-    <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M19 4h-1V2h-2v2H8V2H6v2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 16H5V10h14v10zM5 8V6h14v2H5zm2 4h2v2H7v-2zm4 0h2v2h-2v-2zm4 0h2v2h-2v-2z"
-        fill="#4285F4"
-      />
-    </svg>
-  ),
-  "google-contacts": (
-    <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
-      <circle cx="12" cy="8" r="4" fill="#34A853" />
-      <path d="M12 14c-5.5 0-10 2.5-10 5.5V22h20v-2.5c0-3-4.5-5.5-10-5.5z" fill="#34A853" />
-    </svg>
-  ),
-  dropbox: (
-    <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M6 1.807L0 5.629l6 3.822 6.001-3.822L6 1.807zM18 1.807l-6 3.822 6 3.822 6-3.822-6-3.822zM0 13.274l6 3.822 6.001-3.822L6 9.451l-6 3.823zM18 9.451l-6 3.823 6 3.822 6-3.822-6-3.823zM6 18.371l6.001 3.822 6-3.822-6-3.822L6 18.371z"
-        fill="#0061FF"
-      />
-    </svg>
-  ),
-  zoom: (
-    <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
-      <path
-        d="M4.5 0A4.5 4.5 0 000 4.5v15A4.5 4.5 0 004.5 24h15a4.5 4.5 0 004.5-4.5v-15A4.5 4.5 0 0019.5 0h-15z"
-        fill="#2D8CFF"
-      />
-      <path d="M6.75 8.25h6.75v4.5l3.75-3v6l-3.75-3v4.5H6.75v-9z" fill="white" />
-    </svg>
-  ),
-}
+import { getIntegrationIcon } from "@/lib/integration-icons"
 
 export default function IntegrationsPage() {
   const [integrations, setIntegrations] = useState<Integration[]>([])
@@ -169,7 +101,7 @@ export default function IntegrationsPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50/30 via-white to-blue-50/50">
+      <div className="min-h-screen bg-linear-to-br from-blue-50/30 via-white to-blue-50/50">
         <Navbar />
         <main className="container mx-auto px-6 py-12 max-w-6xl">
           <div className="flex items-center justify-center py-20">
@@ -181,7 +113,7 @@ export default function IntegrationsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/30 via-white to-blue-50/50">
+    <div className="min-h-screen bg-linear-to-br from-blue-50/30 via-white to-blue-50/50">
       <Navbar />
 
       <main className="container mx-auto px-6 py-12 max-w-6xl">
@@ -203,7 +135,7 @@ export default function IntegrationsPage() {
 
         {isEmpty && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center">
+            <div className="h-20 w-20 rounded-full bg-linear-to-br from-blue-100 to-blue-200 flex items-center justify-center">
               <Sparkles className="h-10 w-10 text-blue-600" />
             </div>
             <h2 className="text-3xl font-serif font-semibold text-black text-balance text-center">Nothing here yet</h2>
@@ -215,7 +147,7 @@ export default function IntegrationsPage() {
 
         {isComplete && (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <div className="h-20 w-20 rounded-full bg-gradient-to-br from-green-100 to-emerald-200 flex items-center justify-center">
+            <div className="h-20 w-20 rounded-full bg-linear-to-br from-green-100 to-emerald-200 flex items-center justify-center">
               <Check className="h-10 w-10 text-green-600" />
             </div>
             <h2 className="text-3xl font-serif font-semibold text-black text-balance text-center">You're all set</h2>
@@ -267,9 +199,9 @@ export default function IntegrationsPage() {
                       )}
                     </button>
 
-                    <div className="flex flex-col items-center gap-4 text-center pt-4">
-                      <div className="flex-shrink-0">
-                        {IntegrationIcons[integration.slug] || (
+                      <div className="flex flex-col items-center gap-4 text-center pt-4">
+                      <div className="shrink-0">
+                        {getIntegrationIcon(integration.slug, '3x') || (
                           <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-sm">
                             {integration.name.charAt(0)}
                           </div>
@@ -315,11 +247,11 @@ export default function IntegrationsPage() {
 
                       <div className={`flex flex-col items-center gap-4 text-center ${integration.coming_soon ? "pt-4" : ""}`}>
                         <div
-                        className={`flex-shrink-0 transition-opacity duration-300 ${
+                        className={`shrink-0 transition-opacity duration-300 ${
                           integration.coming_soon ? "opacity-40" : "opacity-30 group-hover:opacity-100"
                         }`}
                       >
-                        {IntegrationIcons[integration.slug] || (
+                        {getIntegrationIcon(integration.slug, '3x') || (
                           <div className="h-10 w-10 rounded-lg bg-gray-200 flex items-center justify-center text-gray-500 font-bold text-sm">
                             {integration.name.charAt(0)}
                           </div>

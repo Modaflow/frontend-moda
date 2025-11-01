@@ -144,7 +144,7 @@ export function ConnectIntegrationButton({
             Connected!
           </>
         ) : (
-          `Connect ${integrationName}`
+          "Connect"
         )}
       </Button>
       {error && <p className="text-sm text-red-500">{error}</p>}

@@ -107,7 +107,7 @@ export default function IntegrationsCallback() {
   }, [router])
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50/30 via-white to-blue-50/50">
+    <div className="flex min-h-screen items-center justify-center bg-linear-to-br from-blue-50/30 via-white to-blue-50/50">
       <div className="text-center space-y-6 p-8 bg-white rounded-2xl shadow-lg max-w-md w-full mx-4">
         <div className="flex justify-center">
           {statusType === "loading" && <Loader2 className="h-16 w-16 animate-spin text-blue-600" />}

@@ -6,7 +6,7 @@ import { Home, User, Settings, LogOut } from "lucide-react"
 
 export default function Dashboard() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-secondary/30 to-accent/20">
+    <div className="min-h-screen bg-linear-to-br from-background via-secondary/30 to-accent/20">
       {/* Header */}
       <header className="border-b bg-card/50 backdrop-blur-sm">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
