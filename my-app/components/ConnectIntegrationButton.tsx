@@ -1,23 +1,25 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { supabase } from "@/lib/supabase"
-import { startIntegrationConnection } from "@/lib/integrations"
-import { Loader2 } from "lucide-react"
+import { startIntegrationConnection, checkConnectionStatus } from "@/lib/integrations"
+import { Loader2, CheckCircle } from "lucide-react"
 
 interface ConnectIntegrationButtonProps {
   integrationSlug: string
   integrationName: string
-  onConnectionStart?: () => void
+  onConnectionComplete?: () => void
 }
 
 export function ConnectIntegrationButton({
   integrationSlug,
   integrationName,
-  onConnectionStart,
+  onConnectionComplete,
 }: ConnectIntegrationButtonProps) {
   const [loading, setLoading] = useState(false)
+  const [polling, setPolling] = useState(false)
+  const [connected, setConnected] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const handleConnect = async () => {
@@ -36,42 +38,107 @@ export function ConnectIntegrationButton({
         return
       }
 
-      // Store which integration we're connecting (for callback page)
-      localStorage.setItem("connecting_integration", integrationSlug)
-
-      // Notify parent component
-      onConnectionStart?.()
-
-      // Start connection (will redirect to OAuth)
+      // Start connection
       const result = await startIntegrationConnection(integrationSlug, session.access_token)
 
-      if (result.success && result.auth_url) {
-        // Redirect to OAuth page
-        window.location.href = result.auth_url
-      } else {
-        throw new Error("No auth URL returned")
+      if (!result.success || !result.auth_url) {
+        throw new Error(result.message || "No auth URL returned")
       }
+
+      setLoading(false)
+      setPolling(true)
+
+      // Open OAuth in new tab
+      const authWindow = window.open(result.auth_url, "_blank", "width=600,height=700")
+
+      // Start polling for connection status
+      const maxAttempts = 60 // 60 attempts = 2 minutes
+      let attempts = 0
+
+      const pollStatus = async () => {
+        if (attempts >= maxAttempts) {
+          setPolling(false)
+          setError("Connection timeout. Please try again.")
+          return
+        }
+
+        attempts++
+
+        try {
+          const statusResult = await checkConnectionStatus(integrationSlug, session.access_token)
+
+          if (statusResult.status === "connected") {
+            // Success!
+            setPolling(false)
+            setConnected(true)
+
+            // Close the auth window if still open
+            if (authWindow && !authWindow.closed) {
+              authWindow.close()
+            }
+
+            // Notify parent to reload
+            onConnectionComplete?.()
+
+            // Reset after 2 seconds
+            setTimeout(() => {
+              setConnected(false)
+            }, 2000)
+          } else if (statusResult.status === "failed") {
+            // Failed
+            setPolling(false)
+            setError("Connection failed. Please try again.")
+
+            if (authWindow && !authWindow.closed) {
+              authWindow.close()
+            }
+          } else {
+            // Still pending, poll again
+            setTimeout(pollStatus, 2000)
+          }
+        } catch (err) {
+          console.error("Error checking status:", err)
+          // Continue polling despite errors
+          setTimeout(pollStatus, 2000)
+        }
+      }
+
+      // Start polling after a short delay
+      setTimeout(pollStatus, 3000)
     } catch (err) {
       console.error("Failed to connect:", err)
       setError(err instanceof Error ? err.message : "Failed to start connection")
       setLoading(false)
-      localStorage.removeItem("connecting_integration")
+      setPolling(false)
     }
   }
 
   return (
     <div className="space-y-2">
-      <Button onClick={handleConnect} disabled={loading} className="w-full" size="lg">
+      <Button onClick={handleConnect} disabled={loading || polling || connected} className="w-full" size="lg">
         {loading ? (
           <>
             <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            Connecting...
+            Starting...
+          </>
+        ) : polling ? (
+          <>
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Waiting for authorization...
+          </>
+        ) : connected ? (
+          <>
+            <CheckCircle className="mr-2 h-4 w-4 text-green-500" />
+            Connected!
           </>
         ) : (
           `Connect ${integrationName}`
         )}
       </Button>
       {error && <p className="text-sm text-red-500">{error}</p>}
+      {polling && (
+        <p className="text-xs text-blue-600">Complete the authorization in the new tab...</p>
+      )}
     </div>
   )
 }

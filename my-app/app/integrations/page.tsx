@@ -106,6 +106,10 @@ export default function IntegrationsPage() {
     return userIntegrations.some((ui) => ui.integration.slug === slug && ui.composio_connected)
   }
 
+  const getConnectedIntegration = (slug: string): UserIntegration | undefined => {
+    return userIntegrations.find((ui) => ui.integration.slug === slug && ui.composio_connected)
+  }
+
   const handleDisconnect = async (slug: string, name: string) => {
     if (!confirm(`Disconnect ${name}?`)) return
 
@@ -236,58 +240,85 @@ export default function IntegrationsPage() {
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {availableIntegrations.map((integration) => (
-                  <div
-                    key={integration.id}
-                    className={`group relative border border-black/5 rounded-2xl bg-white/40 backdrop-blur-sm transition-all duration-300 p-8 ${
-                      integration.coming_soon ? "cursor-not-allowed opacity-60" : "hover:bg-white/80 hover:border-black/10 hover:shadow-lg hover:shadow-black/5"
-                    }`}
-                  >
-                    {integration.coming_soon && (
-                      <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 backdrop-blur-sm">
-                        <span className="text-xs font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                          Coming Soon
-                        </span>
-                      </div>
-                    )}
+                {availableIntegrations.map((integration) => {
+                  const connectedInfo = getConnectedIntegration(integration.slug)
+                  const isCurrentlyConnected = !!connectedInfo
 
-                    <div className={`flex flex-col items-center gap-4 text-center ${integration.coming_soon ? "pt-4" : ""}`}>
-                      <div
-                        className={`flex-shrink-0 transition-opacity duration-300 ${
-                          integration.coming_soon ? "opacity-40" : "opacity-30 group-hover:opacity-100"
-                        }`}
-                      >
-                        {IntegrationIcons[integration.slug]}
-                      </div>
-                      <div className="space-y-1">
-                        <h3
-                          className={`text-base font-medium transition-colors ${
-                            integration.coming_soon ? "text-black/40" : "text-black/50 group-hover:text-black"
-                          }`}
-                        >
-                          {integration.name}
-                        </h3>
-                        <p
-                          className={`text-xs transition-colors ${
-                            integration.coming_soon ? "text-black/30" : "text-black/30 group-hover:text-black/40"
-                          }`}
-                        >
-                          {integration.description}
-                        </p>
-                      </div>
-
-                      {!integration.coming_soon && (
-                        <div className="w-full mt-2">
-                          <ConnectIntegrationButton
-                            integrationSlug={integration.slug}
-                            integrationName={integration.name}
-                            onConnectionStart={loadIntegrations}
-                          />
+                  return (
+                    <div
+                      key={integration.id}
+                      className={`group relative border border-black/5 rounded-2xl bg-white/40 backdrop-blur-sm transition-all duration-300 p-8 ${
+                        integration.coming_soon ? "cursor-not-allowed opacity-60" : "hover:bg-white/80 hover:border-black/10 hover:shadow-lg hover:shadow-black/5"
+                      }`}
+                    >
+                      {integration.coming_soon && (
+                        <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-gradient-to-r from-blue-500/10 to-purple-500/10 border border-blue-500/20 backdrop-blur-sm">
+                          <span className="text-xs font-medium bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                            Coming Soon
+                          </span>
                         </div>
                       )}
+
+                      <div className={`flex flex-col items-center gap-4 text-center ${integration.coming_soon ? "pt-4" : ""}`}>
+                        <div
+                          className={`flex-shrink-0 transition-opacity duration-300 ${
+                            integration.coming_soon ? "opacity-40" : "opacity-30 group-hover:opacity-100"
+                          }`}
+                        >
+                          {IntegrationIcons[integration.slug]}
+                        </div>
+                        <div className="space-y-1">
+                          <h3
+                            className={`text-base font-medium transition-colors ${
+                              integration.coming_soon ? "text-black/40" : "text-black/50 group-hover:text-black"
+                            }`}
+                          >
+                            {integration.name}
+                          </h3>
+                          <p
+                            className={`text-xs transition-colors ${
+                              integration.coming_soon ? "text-black/30" : "text-black/30 group-hover:text-black/40"
+                            }`}
+                          >
+                            {integration.description}
+                          </p>
+                        </div>
+
+                        {!integration.coming_soon && !isCurrentlyConnected && (
+                          <div className="w-full mt-2">
+                            <ConnectIntegrationButton
+                              integrationSlug={integration.slug}
+                              integrationName={integration.name}
+                              onConnectionComplete={loadIntegrations}
+                            />
+                          </div>
+                        )}
+
+                        {!integration.coming_soon && isCurrentlyConnected && (
+                          <div className="w-full mt-2 space-y-2">
+                            <div className="text-sm text-green-600 font-medium">✓ Already Connected</div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleDisconnect(integration.slug, integration.name)}
+                              disabled={disconnecting === integration.slug}
+                              className="w-full"
+                            >
+                              {disconnecting === integration.slug ? (
+                                <>
+                                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                  Disconnecting...
+                                </>
+                              ) : (
+                                "Disconnect"
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             </div>
           )}
