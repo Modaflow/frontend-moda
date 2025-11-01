@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { Navbar } from "@/components/navbar"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { User, Mail, Phone, Edit2, Check, Loader2 } from "lucide-react"
+import { User, Mail, Phone, Loader2 } from "lucide-react"
 import { supabase } from "@/lib/supabase"
 import { PhoneInput } from "@/components/phone-input"
 
@@ -12,10 +12,7 @@ export default function ProfilePage() {
   const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [phone, setPhone] = useState("")
-  const [isEditing, setIsEditing] = useState(false)
-  const [tempPhone, setTempPhone] = useState("")
   const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
   const [userId, setUserId] = useState<string | null>(null)
 
   useEffect(() => {
@@ -40,7 +37,6 @@ export default function ProfilePage() {
           if (profile) {
             setName(profile.full_name)
             setPhone(profile.phone_number)
-            setTempPhone(profile.phone_number)
           }
         }
       } catch (error) {
@@ -52,35 +48,6 @@ export default function ProfilePage() {
     
     loadUserData()
   }, [])
-
-  const handleSave = async () => {
-    if (!userId) return
-    
-    setSaving(true)
-    try {
-      const { error } = await supabase
-        .from('user_profiles')
-        .update({
-          phone_number: tempPhone,
-          updated_at: new Date().toISOString()
-        })
-        .eq('user_id', userId)
-      
-      if (error) throw error
-      
-      setPhone(tempPhone)
-      setIsEditing(false)
-    } catch (error) {
-      console.error('Error updating phone:', error)
-      alert('Failed to update phone number')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const handleEdit = () => {
-    setIsEditing(true)
-  }
 
   if (loading) {
     return (
@@ -126,40 +93,12 @@ export default function ProfilePage() {
                 <Phone className="h-4 w-4 text-black/40" />
                 Phone
               </Label>
-              <div className="relative">
-                <PhoneInput
-                  value={isEditing ? tempPhone : phone}
-                  onChange={setTempPhone}
-                  disabled={!isEditing}
-                  className={isEditing ? "" : "opacity-60"}
-                />
-                <button
-                  onClick={isEditing ? handleSave : handleEdit}
-                  disabled={saving}
-                  className={`absolute right-1.5 top-1.5 h-9 px-4 rounded-lg text-sm font-medium transition-all flex items-center gap-2 z-10 ${
-                    isEditing
-                      ? "bg-green-500 hover:bg-green-600 text-white disabled:opacity-50"
-                      : "bg-black/5 hover:bg-black/10 text-black/60"
-                  }`}
-                >
-                  {saving ? (
-                    <>
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      Saving
-                    </>
-                  ) : isEditing ? (
-                    <>
-                      <Check className="h-3.5 w-3.5" />
-                      Save
-                    </>
-                  ) : (
-                    <>
-                      <Edit2 className="h-3.5 w-3.5" />
-                      Edit
-                    </>
-                  )}
-                </button>
-              </div>
+              <PhoneInput
+                value={phone}
+                onChange={() => {}}
+                disabled={true}
+                className="opacity-60"
+              />
             </div>
           </div>
         </div>
