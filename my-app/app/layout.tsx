@@ -10,8 +10,8 @@ const geistMono = Geist_Mono({ subsets: ["latin"], variable: "--font-mono" })
 const playfair = Playfair_Display({ subsets: ["latin"], variable: "--font-serif" })
 
 export const metadata: Metadata = {
-  title: "Moda - Your Fashion Destination",
-  description: "Experience fashion like never before",
+  title: "Moda",
+  description: "The co-founder you wish you had.",
   generator: "v0.app",
 }
 
