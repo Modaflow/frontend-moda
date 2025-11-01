@@ -172,12 +172,6 @@ export default function IntegrationsPage() {
                     className="group relative border-2 border-green-500/20 rounded-2xl bg-white backdrop-blur-sm hover:bg-white hover:border-green-500/30 hover:shadow-xl hover:shadow-green-500/10 transition-all duration-300 p-8"
                   >
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5">
-                      {userIntegrations.find((ui) => ui.integration.slug === integration.slug)?.composio_connected && (
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-green-500/10 border border-green-500/20">
-                          <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
-                          <span className="text-xs font-medium text-green-700">Actions</span>
-                        </div>
-                      )}
                       {userIntegrations.find((ui) => ui.integration.slug === integration.slug)?.hyperspell_connected && (
                         <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-purple-500/10 border border-purple-500/20">
                           <div className="h-1.5 w-1.5 rounded-full bg-purple-500" />
